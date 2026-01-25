@@ -1,31 +1,60 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
     LayoutDashboard, FileText, Settings, LogOut,
-    ExternalLink, Bell, User, Clock, CheckCircle2
+    ExternalLink, Bell, User, Clock, CheckCircle2, Loader2
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { GridBackground } from '@/components/backgrounds/GridBackground';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { StatusTimeline } from '@/components/dashboard/StatusTimeline';
 import { ChatWidget } from '@/components/dashboard/ChatWidget';
-import { useWizardStore } from '@/stores/wizardStore';
+import { apiClient, type Project } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 
 export default function DashboardPage() {
-    const { businessName, domain, selectedVibe } = useWizardStore();
+    const router = useRouter();
+    const [projects, setProjects] = useState<Project[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [userEmail, setUserEmail] = useState<string>('');
 
-    const projectData = {
-        name: businessName || 'Nexus Digital',
-        domain: domain || 'nexusdigital',
-        vibe: selectedVibe || 'modern',
-        status: 'In Development',
-        progress: 45,
-        startDate: 'Jan 15, 2024',
+    useEffect(() => {
+        async function loadData() {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) {
+                    router.push('/login');
+                    return;
+                }
+
+                setUserEmail(user.email || '');
+                const data = await apiClient.getProjects(user.id);
+                setProjects(data);
+            } catch (err) {
+                console.error('Failed to load projects:', err);
+            } finally {
+                setLoading(false);
+            }
+        }
+        loadData();
+    }, [router]);
+
+    const activeProject = projects[0];
+
+    const projectData = activeProject ? {
+        name: activeProject.business_name,
+        domain: activeProject.domain_choice,
+        vibe: activeProject.vibe_style,
+        status: activeProject.status,
+        progress: 45, // Mock progress for now
+        startDate: new Date(activeProject.created_at).toLocaleDateString(),
         estimatedLaunch: 'Feb 5, 2024',
         teamLead: 'Alex Chen',
-    };
+    } : null;
 
     const recentActivity = [
         { id: 1, action: 'Design mockups approved', time: '2 hours ago', type: 'success' },
@@ -33,6 +62,14 @@ export default function DashboardPage() {
         { id: 3, action: 'Color palette finalized', time: '1 day ago', type: 'success' },
         { id: 4, action: 'Domain DNS configured', time: '2 days ago', type: 'success' },
     ];
+
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-void">
+                <Loader2 className="animate-spin text-cobalt" size={32} />
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen flex">
@@ -131,69 +168,85 @@ export default function DashboardPage() {
                         transition={{ delay: 0.1 }}
                         className="mb-12"
                     >
-                        <Card className="bg-carbon border-cobalt/30">
-                            <div className="flex items-start justify-between mb-6">
-                                <div>
-                                    <span className="text-label text-cobalt block mb-2">ACTIVE PROJECT</span>
-                                    <h2 className="font-display font-bold text-3xl text-bone mb-1">
-                                        {projectData.name}
-                                    </h2>
-                                    <p className="font-mono text-sm text-ash flex items-center gap-2">
-                                        {projectData.domain}.com
-                                        <ExternalLink size={12} className="text-cobalt" />
-                                    </p>
+                        {projectData ? (
+                            <Card className="bg-carbon border-cobalt/30">
+                                <div className="flex items-start justify-between mb-6">
+                                    <div>
+                                        <span className="text-label text-cobalt block mb-2">ACTIVE PROJECT</span>
+                                        <h2 className="font-display font-bold text-3xl text-bone mb-1">
+                                            {projectData.name}
+                                        </h2>
+                                        <p className="font-mono text-sm text-ash flex items-center gap-2">
+                                            {projectData.domain}.com
+                                            <ExternalLink size={12} className="text-cobalt" />
+                                        </p>
+                                    </div>
+
+                                    <div className="text-right">
+                                        <span className={`
+                        inline-flex items-center gap-2 px-3 py-1
+                        font-mono text-xs border
+                        ${projectData.status === 'In Development'
+                                                ? 'text-yellow-400 border-yellow-400/30 bg-yellow-400/10'
+                                                : 'text-green-400 border-green-400/30 bg-green-400/10'}
+                      `}>
+                                            <Clock size={12} />
+                                            {projectData.status.toUpperCase()}
+                                        </span>
+                                    </div>
                                 </div>
 
-                                <div className="text-right">
-                                    <span className={`
-                    inline-flex items-center gap-2 px-3 py-1
-                    font-mono text-xs border
-                    ${projectData.status === 'In Development'
-                                            ? 'text-yellow-400 border-yellow-400/30 bg-yellow-400/10'
-                                            : 'text-green-400 border-green-400/30 bg-green-400/10'}
-                  `}>
-                                        <Clock size={12} />
-                                        {projectData.status.toUpperCase()}
-                                    </span>
+                                {/* Progress Bar */}
+                                <div className="mb-6">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="font-mono text-xs text-ash">OVERALL PROGRESS</span>
+                                        <span className="font-mono text-xs text-cobalt">{projectData.progress}%</span>
+                                    </div>
+                                    <div className="h-2 bg-steel rounded-full overflow-hidden">
+                                        <motion.div
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${projectData.progress}%` }}
+                                            transition={{ duration: 1, delay: 0.5 }}
+                                            className="h-full bg-cobalt"
+                                        />
+                                    </div>
                                 </div>
-                            </div>
 
-                            {/* Progress Bar */}
-                            <div className="mb-6">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="font-mono text-xs text-ash">OVERALL PROGRESS</span>
-                                    <span className="font-mono text-xs text-cobalt">{projectData.progress}%</span>
+                                {/* Project Details */}
+                                <div className="grid grid-cols-4 gap-6 pt-6 border-t border-steel">
+                                    <div>
+                                        <span className="text-label block mb-1">STYLE</span>
+                                        <p className="font-mono text-sm text-bone uppercase">{projectData.vibe}</p>
+                                    </div>
+                                    <div>
+                                        <span className="text-label block mb-1">STARTED</span>
+                                        <p className="font-mono text-sm text-bone">{projectData.startDate}</p>
+                                    </div>
+                                    <div>
+                                        <span className="text-label block mb-1">LAUNCH ETA</span>
+                                        <p className="font-mono text-sm text-cobalt">{projectData.estimatedLaunch}</p>
+                                    </div>
+                                    <div>
+                                        <span className="text-label block mb-1">TEAM LEAD</span>
+                                        <p className="font-mono text-sm text-bone">{projectData.teamLead}</p>
+                                    </div>
                                 </div>
-                                <div className="h-2 bg-steel rounded-full overflow-hidden">
-                                    <motion.div
-                                        initial={{ width: 0 }}
-                                        animate={{ width: `${projectData.progress}%` }}
-                                        transition={{ duration: 1, delay: 0.5 }}
-                                        className="h-full bg-cobalt"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Project Details */}
-                            <div className="grid grid-cols-4 gap-6 pt-6 border-t border-steel">
-                                <div>
-                                    <span className="text-label block mb-1">STYLE</span>
-                                    <p className="font-mono text-sm text-bone uppercase">{projectData.vibe}</p>
-                                </div>
-                                <div>
-                                    <span className="text-label block mb-1">STARTED</span>
-                                    <p className="font-mono text-sm text-bone">{projectData.startDate}</p>
-                                </div>
-                                <div>
-                                    <span className="text-label block mb-1">LAUNCH ETA</span>
-                                    <p className="font-mono text-sm text-cobalt">{projectData.estimatedLaunch}</p>
-                                </div>
-                                <div>
-                                    <span className="text-label block mb-1">TEAM LEAD</span>
-                                    <p className="font-mono text-sm text-bone">{projectData.teamLead}</p>
-                                </div>
-                            </div>
-                        </Card>
+                            </Card>
+                        ) : (
+                            <Card className="bg-carbon border-dashed border-steel text-center py-12">
+                                <h2 className="headline-md text-bone mb-4">NO ACTIVE PROJECT</h2>
+                                <p className="text-technical text-ash mb-8 max-w-md mx-auto">
+                                    You haven't started a project yet. Launch the wizard to create your digital presence.
+                                </p>
+                                <Button
+                                    variant="primary"
+                                    onClick={() => router.push('/wizard')}
+                                >
+                                    START NEW PROJECT
+                                    <ExternalLink size={16} />
+                                </Button>
+                            </Card>
+                        )}
                     </motion.div>
 
                     {/* Status Timeline */}
@@ -271,7 +324,7 @@ export default function DashboardPage() {
             </main>
 
             {/* AI Chat Widget */}
-            <ChatWidget />
+            <ChatWidget projectId={activeProject?.id || null} />
         </div>
     );
 }

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { apiClient } from '@/lib/api';
 
 export type VibeType = 'modern' | 'classic' | 'bold' | null;
 
@@ -16,6 +17,11 @@ interface WizardState {
     domain: string;
     domainStatus: 'idle' | 'checking' | 'available' | 'taken';
 
+    // Save state
+    saveStatus: 'idle' | 'saving' | 'success' | 'error';
+    saveError: string | null;
+    projectId: string | null;
+
     // Actions
     setStep: (step: number) => void;
     nextStep: () => void;
@@ -28,6 +34,9 @@ interface WizardState {
 
     // Mock domain check
     checkDomain: (domain: string) => Promise<void>;
+
+    // Save project to backend
+    saveProject: (userId: string) => Promise<string | null>;
 
     // Reset wizard
     reset: () => void;
@@ -42,6 +51,9 @@ const initialState = {
     selectedVibe: null as VibeType,
     domain: '',
     domainStatus: 'idle' as const,
+    saveStatus: 'idle' as const,
+    saveError: null as string | null,
+    projectId: null as string | null,
 };
 
 export const useWizardStore = create<WizardState>((set, get) => ({
@@ -83,6 +95,37 @@ export const useWizardStore = create<WizardState>((set, get) => ({
         );
 
         set({ domainStatus: taken ? 'taken' : 'available' });
+    },
+
+    saveProject: async (userId: string) => {
+        const { businessName, selectedVibe, domain } = get();
+
+        if (!selectedVibe) {
+            set({ saveStatus: 'error', saveError: 'Please select a vibe style' });
+            return null;
+        }
+
+        set({ saveStatus: 'saving', saveError: null });
+
+        try {
+            const response = await apiClient.createProject({
+                business_name: businessName,
+                vibe_style: selectedVibe,
+                user_id: userId,
+                domain_choice: domain + '.com',
+            });
+
+            set({
+                saveStatus: 'success',
+                projectId: response.project_id
+            });
+
+            return response.project_id;
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to save project';
+            set({ saveStatus: 'error', saveError: message });
+            return null;
+        }
     },
 
     reset: () => set(initialState),

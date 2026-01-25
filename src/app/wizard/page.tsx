@@ -335,7 +335,18 @@ function Step3() {
 // Main Wizard Component
 export default function WizardPage() {
     const router = useRouter();
-    const { currentStep, setStep, nextStep, prevStep, canProceed, setBusinessName, setVibe, setDomain } = useWizardStore();
+    const {
+        currentStep,
+        setStep,
+        nextStep,
+        prevStep,
+        canProceed,
+        setBusinessName,
+        setVibe,
+        setDomain,
+        saveProject,
+        saveStatus
+    } = useWizardStore();
 
     // Pre-fill with mock data for demo
     useEffect(() => {
@@ -344,9 +355,22 @@ export default function WizardPage() {
         setDomain(mockWizardData.domain);
     }, [setBusinessName, setVibe, setDomain]);
 
-    const handleNext = () => {
+    const handleNext = async () => {
         if (currentStep === 3 && canProceed()) {
-            router.push('/proposal');
+            // Import supabase client to get user
+            const { supabase } = await import('@/lib/supabase');
+            const { data: { user } } = await supabase.auth.getUser();
+
+            if (user) {
+                // Save project to Python backend
+                const projectId = await saveProject(user.id);
+                if (projectId) {
+                    router.push('/proposal');
+                }
+            } else {
+                // Redirect to login if not authenticated
+                router.push('/login');
+            }
         } else {
             nextStep();
         }
@@ -440,10 +464,24 @@ export default function WizardPage() {
                     <Button
                         variant="primary"
                         onClick={handleNext}
-                        disabled={!canProceed()}
+                        disabled={!canProceed() || saveStatus === 'saving'}
                     >
-                        {currentStep === 3 ? 'GENERATE PROPOSAL' : 'CONTINUE'}
-                        <ArrowRight size={16} />
+                        {saveStatus === 'saving' ? (
+                            <>
+                                <Loader2 size={16} className="animate-spin" />
+                                SAVING...
+                            </>
+                        ) : currentStep === 3 ? (
+                            <>
+                                GENERATE PROPOSAL
+                                <ArrowRight size={16} />
+                            </>
+                        ) : (
+                            <>
+                                CONTINUE
+                                <ArrowRight size={16} />
+                            </>
+                        )}
                     </Button>
                 </div>
             </div>

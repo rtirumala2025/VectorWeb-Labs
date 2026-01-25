@@ -140,9 +140,11 @@ function SignatureCanvas({ onSign }: { onSign: (signed: boolean) => void }) {
     );
 }
 
+import { apiClient } from '@/lib/api';
+
 export default function ProposalPage() {
     const router = useRouter();
-    const { businessName, selectedVibe, domain } = useWizardStore();
+    const { businessName, selectedVibe, domain, projectId } = useWizardStore();
     const [hasSigned, setHasSigned] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
 
@@ -177,9 +179,18 @@ and initiates the design phase. Given current demand, estimated delivery is 10-1
 
     const handlePayment = async () => {
         setIsProcessing(true);
-        // Simulate payment processing
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        router.push('/dashboard');
+        try {
+            if (projectId) {
+                await apiClient.payProject(projectId);
+            } else {
+                // Fallback for demo/mock mode
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+            router.push('/dashboard');
+        } catch (error) {
+            console.error('Payment processing failed:', error);
+            setIsProcessing(false);
+        }
     };
 
     return (

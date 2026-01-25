@@ -11,7 +11,13 @@ interface Message {
     timestamp: Date;
 }
 
-export function ChatWidget() {
+interface ChatWidgetProps {
+    projectId: string | null;
+}
+
+import { apiClient } from '@/lib/api';
+
+export function ChatWidget({ projectId }: ChatWidgetProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [input, setInput] = useState('');
     const [messages, setMessages] = useState<Message[]>([
@@ -55,18 +61,31 @@ export function ChatWidget() {
         setInput('');
         setIsTyping(true);
 
-        // Simulate AI response
-        await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 1500));
+        // Call Python Backend AI
+        try {
+            const { response } = await apiClient.chat(input, projectId || 'general');
 
-        const response: Message = {
-            id: (Date.now() + 1).toString(),
-            role: 'assistant',
-            content: mockResponses[Math.floor(Math.random() * mockResponses.length)],
-            timestamp: new Date(),
-        };
+            const botMessage: Message = {
+                id: (Date.now() + 1).toString(),
+                role: 'assistant',
+                content: response,
+                timestamp: new Date(),
+            };
 
-        setIsTyping(false);
-        setMessages((prev) => [...prev, response]);
+            setMessages((prev) => [...prev, botMessage]);
+        } catch (error) {
+            console.error('Chat error:', error);
+            // Fallback error message
+            const errorMessage: Message = {
+                id: (Date.now() + 1).toString(),
+                role: 'assistant',
+                content: "Sorry, I'm having trouble connecting to the server right now. Please try again later.",
+                timestamp: new Date(),
+            };
+            setMessages((prev) => [...prev, errorMessage]);
+        } finally {
+            setIsTyping(false);
+        }
     };
 
     return (
