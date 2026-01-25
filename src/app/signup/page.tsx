@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { NodesAnimation } from '@/components/backgrounds/NodesAnimation';
+import { GoogleButton, AuthDivider } from '@/components/auth/GoogleButton';
 
 export default function SignupPage() {
     const router = useRouter();
@@ -101,6 +102,12 @@ export default function SignupPage() {
                             Create an account to begin the creation wizard.
                         </p>
                     </div>
+
+                    {/* Google OAuth Button */}
+                    <GoogleButton mode="signup" />
+
+                    {/* Divider */}
+                    <AuthDivider />
 
                     {/* Form */}
                     <form onSubmit={handleSubmit} className="space-y-6">

@@ -3,11 +3,21 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { Menu, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Menu, X, LogOut, User } from 'lucide-react';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export function Navbar() {
+    const router = useRouter();
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [user, setUser] = useState<{ email?: string } | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -16,6 +26,28 @@ export function Navbar() {
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
+
+    useEffect(() => {
+        // Check current session
+        const checkUser = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            setUser(session?.user ?? null);
+            setIsLoading(false);
+        };
+        checkUser();
+
+        // Listen for auth state changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setUser(session?.user ?? null);
+        });
+
+        return () => subscription.unsubscribe();
+    }, []);
+
+    const handleSignOut = async () => {
+        await supabase.auth.signOut();
+        router.push('/');
+    };
 
     return (
         <motion.nav
@@ -44,25 +76,56 @@ export function Navbar() {
 
                     {/* Desktop Navigation */}
                     <div className="hidden md:flex items-center gap-6">
-                        <Link
-                            href="/login"
-                            className="font-mono text-sm text-ash hover:text-bone transition-colors tracking-wider"
-                        >
-                            LOGIN
-                        </Link>
-                        <Link
-                            href="/signup"
-                            className="
-                px-5 py-2.5
-                bg-cobalt text-white
-                font-mono font-bold text-sm uppercase tracking-wider
-                hover:bg-cobalt-dim hover:scale-105
-                transition-all duration-200
-                whitespace-nowrap
-              "
-                        >
-                            START PROJECT
-                        </Link>
+                        {isLoading ? (
+                            <div className="w-24 h-8 bg-steel/30 animate-pulse rounded" />
+                        ) : user ? (
+                            <>
+                                <Link
+                                    href="/dashboard"
+                                    className="font-mono text-sm text-ash hover:text-bone transition-colors tracking-wider flex items-center gap-2"
+                                >
+                                    <User size={14} />
+                                    DASHBOARD
+                                </Link>
+                                <button
+                                    onClick={handleSignOut}
+                                    className="
+                        px-5 py-2.5
+                        bg-steel/20 text-ash hover:text-white
+                        font-mono font-bold text-sm uppercase tracking-wider
+                        hover:bg-steel/30
+                        transition-all duration-200
+                        flex items-center gap-2
+                        border border-steel
+                    "
+                                >
+                                    <LogOut size={14} />
+                                    LOGOUT
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <Link
+                                    href="/login"
+                                    className="font-mono text-sm text-ash hover:text-bone transition-colors tracking-wider"
+                                >
+                                    LOGIN
+                                </Link>
+                                <Link
+                                    href="/signup"
+                                    className="
+                        px-5 py-2.5
+                        bg-cobalt text-white
+                        font-mono font-bold text-sm uppercase tracking-wider
+                        hover:bg-cobalt-dim hover:scale-105
+                        transition-all duration-200
+                        whitespace-nowrap
+                    "
+                                >
+                                    START PROJECT
+                                </Link>
+                            </>
+                        )}
                     </div>
 
                     {/* Mobile Menu Button */}
@@ -82,26 +145,61 @@ export function Navbar() {
                         className="md:hidden mt-4 pb-4 border-t border-white/10 pt-4"
                     >
                         <div className="flex flex-col gap-4">
-                            <Link
-                                href="/login"
-                                className="font-mono text-sm text-ash hover:text-bone transition-colors tracking-wider"
-                                onClick={() => setIsMobileMenuOpen(false)}
-                            >
-                                LOGIN
-                            </Link>
-                            <Link
-                                href="/signup"
-                                className="
-                  px-5 py-2.5 text-center
-                  bg-cobalt text-white
-                  font-mono font-bold text-sm uppercase tracking-wider
-                  hover:bg-cobalt-dim
-                  transition-all duration-200
-                "
-                                onClick={() => setIsMobileMenuOpen(false)}
-                            >
-                                START PROJECT
-                            </Link>
+                            {isLoading ? (
+                                <div className="w-full h-8 bg-steel/30 animate-pulse rounded" />
+                            ) : user ? (
+                                <>
+                                    <Link
+                                        href="/dashboard"
+                                        className="font-mono text-sm text-ash hover:text-bone transition-colors tracking-wider flex items-center gap-2"
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                    >
+                                        <User size={14} />
+                                        DASHBOARD
+                                    </Link>
+                                    <button
+                                        onClick={() => {
+                                            handleSignOut();
+                                            setIsMobileMenuOpen(false);
+                                        }}
+                                        className="
+                                            px-5 py-2.5 text-center
+                                            bg-steel/20 text-ash
+                                            font-mono font-bold text-sm uppercase tracking-wider
+                                            hover:bg-steel/30
+                                            transition-all duration-200
+                                            flex items-center justify-center gap-2
+                                            border border-steel
+                                        "
+                                    >
+                                        <LogOut size={14} />
+                                        LOGOUT
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <Link
+                                        href="/login"
+                                        className="font-mono text-sm text-ash hover:text-bone transition-colors tracking-wider"
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                    >
+                                        LOGIN
+                                    </Link>
+                                    <Link
+                                        href="/signup"
+                                        className="
+                                            px-5 py-2.5 text-center
+                                            bg-cobalt text-white
+                                            font-mono font-bold text-sm uppercase tracking-wider
+                                            hover:bg-cobalt-dim
+                                            transition-all duration-200
+                                        "
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                    >
+                                        START PROJECT
+                                    </Link>
+                                </>
+                            )}
                         </div>
                     </motion.div>
                 )}

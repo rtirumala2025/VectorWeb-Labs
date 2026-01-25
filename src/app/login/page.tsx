@@ -1,16 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { NodesAnimation } from '@/components/backgrounds/NodesAnimation';
+import { GoogleButton, AuthDivider } from '@/components/auth/GoogleButton';
 
-export default function LoginPage() {
+function LoginContent() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const authError = searchParams.get('error');
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [form, setForm] = useState({ email: '', password: '' });
@@ -57,6 +60,19 @@ export default function LoginPage() {
                             Enter your credentials to access your dashboard.
                         </p>
                     </div>
+
+                    {/* Auth Error */}
+                    {authError && (
+                        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 text-red-400 font-mono text-xs">
+                            Authentication failed. Please try again.
+                        </div>
+                    )}
+
+                    {/* Google OAuth Button */}
+                    <GoogleButton mode="login" />
+
+                    {/* Divider */}
+                    <AuthDivider />
 
                     {/* Form */}
                     <form onSubmit={handleSubmit} className="space-y-6">
@@ -169,5 +185,17 @@ export default function LoginPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-void">
+                <div className="font-mono text-ash animate-pulse">LOADING...</div>
+            </div>
+        }>
+            <LoginContent />
+        </Suspense>
     );
 }
