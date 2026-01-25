@@ -1,11 +1,18 @@
+"""
+VectorWeb Labs - FastAPI Backend
+Main application entry point with API routes.
+"""
+
 import os
-from typing import Optional
+from typing import Optional, Any
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from supabase import create_client, Client
+
+# Import database service
+import db
 
 # Load environment variables
 load_dotenv()
@@ -26,42 +33,62 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize Supabase client
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 
-if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-    raise ValueError("Missing SUPABASE_URL or SUPABASE_SERVICE_KEY environment variables")
+# ══════════════════════════════════════════════════════════════════════════════
+# PYDANTIC MODELS
+# ══════════════════════════════════════════════════════════════════════════════
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-
-
-# Pydantic Models
 class ProjectCreate(BaseModel):
+    """Input model for creating a new project."""
     business_name: str
     vibe_style: str  # 'modern', 'classic', or 'bold'
     user_id: str
     domain_choice: str
+    client_phone: Optional[str] = None
+    website_type: Optional[str] = None
+    target_audience: Optional[str] = None
+    project_scope: Optional[dict] = None
 
 
 class ProjectResponse(BaseModel):
+    """Response model for project creation."""
     project_id: str
     status: str
 
 
 class Project(BaseModel):
+    """Full project model for API responses."""
     id: str
     business_name: str
     vibe_style: str
     domain_choice: str
     status: str
     created_at: str
+    client_phone: Optional[str] = None
+    website_type: Optional[str] = None
+    target_audience: Optional[str] = None
+    deposit_paid: Optional[bool] = False
+    project_scope: Optional[dict] = None
 
     class Config:
-        extra = "ignore"  # Ignore other fields like user_id if not needed in response
+        extra = "ignore"
 
 
-# Routes
+class ChatMessage(BaseModel):
+    """Input model for chat messages."""
+    message: str
+    project_id: str
+
+
+class ChatResponse(BaseModel):
+    """Response model for chat."""
+    response: str
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# HEALTH CHECK ROUTES
+# ══════════════════════════════════════════════════════════════════════════════
+
 @app.get("/")
 async def root():
     return {"message": "VectorWeb Labs API is running"}
@@ -72,107 +99,97 @@ async def health_check():
     return {"status": "healthy", "service": "vectorweb-api"}
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# PROJECT ROUTES
+# ══════════════════════════════════════════════════════════════════════════════
+
 @app.get("/api/projects", response_model=list[Project])
 async def get_projects(user_id: str):
-    """
-    Get all projects for a user.
-    """
-    try:
-        result = supabase.table("projects").select("*").eq("user_id", user_id).order("created_at", desc=True).execute()
-        return result.data
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    """Get all projects for a user."""
+    return db.get_projects_by_user(user_id)
+
+
+@app.get("/api/projects/{project_id}", response_model=Project)
+async def get_project(project_id: str):
+    """Fetch a single project by ID."""
+    project = db.get_project(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return project
 
 
 @app.post("/api/projects", response_model=ProjectResponse)
 async def create_project(project: ProjectCreate):
-    """
-    Create a new project in the database.
-    """
-    try:
-        # Prepare data for insertion
-        project_data = {
-            "business_name": project.business_name,
-            "vibe_style": project.vibe_style,
-            "user_id": project.user_id,
-            "domain_choice": project.domain_choice,
-            "status": "draft"
-        }
-        
-        # Insert into Supabase
-        result = supabase.table("projects").insert(project_data).execute()
-        
-        if not result.data:
-            raise HTTPException(status_code=500, detail="Failed to create project")
-        
-        # Return the created project ID
-        project_id = result.data[0].get("id")
-        
-        return ProjectResponse(
-            project_id=str(project_id),
-            status="success"
-        )
-    
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-class ChatMessage(BaseModel):
-    message: str
-    project_id: str
-
-
-class ChatResponse(BaseModel):
-    response: str
-
-
-# ... other models ...
-
-@app.post("/api/chat", response_model=ChatResponse)
-async def chat_with_ai(chat: ChatMessage):
-    """
-    Mock AI chat endpoint for now.
-    """
-    import random
-    import asyncio
-    
-    # Simulate processing delay
-    await asyncio.sleep(1)
-    
-    # Logic to fetch project context could go here
-    
-    responses = [
-        "Your website is currently in the development phase. The design mockups were approved last week!",
-        "Based on the timeline, we're on track for the Feb 5th launch date. No blockers so far.",
-        "Great question! The contact form will integrate with your existing CRM via webhook.",
-        "I can see the dev team pushed 12 commits today. They're working on the checkout flow.",
-        "Would you like me to schedule a review call with the team? I can find available times.",
-        f"I see you're asking about project {chat.project_id}. Everything looks good!"
-    ]
-    
-    return {"response": random.choice(responses)}
+    """Create a new project in the database."""
+    project_id = db.create_project(project.model_dump())
+    return ProjectResponse(project_id=project_id, status="success")
 
 
 @app.post("/api/projects/{project_id}/pay")
 async def pay_project(project_id: str):
-    """
-    Mark a project as paid.
-    """
+    """Mark a project's deposit as paid and update status to 'building'."""
+    db.mark_deposit_paid(project_id)
+    return {"status": "success", "message": "Payment processed"}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CHAT ROUTES (OpenRouter AI)
+# ══════════════════════════════════════════════════════════════════════════════
+
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+
+@app.post("/api/chat", response_model=ChatResponse)
+async def chat_with_ai(chat: ChatMessage):
+    """Chat with AI using OpenRouter."""
+    from openai import OpenAI
+    
+    if not OPENROUTER_API_KEY:
+        # Fallback to mock if no key provided
+        import random
+        import asyncio
+        await asyncio.sleep(1)
+        responses = [
+            "Your website is currently in the development phase. The design mockups were approved last week!",
+            "Based on the timeline, we're on track for the Feb 5th launch date. No blockers so far.",
+            "Great question! The contact form will integrate with your existing CRM via webhook.",
+            "I can see the dev team pushed 12 commits today. They're working on the checkout flow.",
+            "Would you like me to schedule a review call with the team? I can find available times."
+        ]
+        return {"response": f"[MOCK] {random.choice(responses)}"}
+
     try:
-        # Update status to 'paid' (or 'building' as per schema default logic? Schema says draft/paid/building)
-        # Let's set it to 'building' to show progress in dashboard
-        result = supabase.table("projects").update({"status": "building"}).eq("id", project_id).execute()
+        client = OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=OPENROUTER_API_KEY,
+        )
+
+        completion = client.chat.completions.create(
+            extra_headers={
+                "HTTP-Referer": "http://localhost:3000",
+                "X-Title": "VectorWeb Labs",
+            },
+            model="google/gemini-2.0-flash-lite-preview-02-05:free",
+            messages=[
+                {
+                    "role": "system", 
+                    "content": f"You are Scout, an AI project assistant for VectorWeb Labs. You are helping a client with their project (ID: {chat.project_id}). Be professional, concise, and helpful."
+                },
+                {
+                    "role": "user", 
+                    "content": chat.message
+                }
+            ]
+        )
+        return {"response": completion.choices[0].message.content}
         
-        if not result.data:
-            # It might return empty list if row not found or RLS blocks it, but we are using service key
-            # Check if using service key? Yes main.py uses env vars directly to create client.
-            # Wait, create_client(URL, KEY). If KEY is service role, it bypasses RLS.
-            pass
-
-        return {"status": "success", "message": "Payment processed"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error calling OpenRouter: {e}")
+        raise HTTPException(status_code=500, detail=f"AI Error: {str(e)}")
 
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MAIN ENTRY POINT
+# ══════════════════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
     import uvicorn
