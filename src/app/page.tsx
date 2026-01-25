@@ -14,7 +14,7 @@ export default function HomePage() {
       {/* ═══════════════════════════════════════════════════════════════
           HERO SECTION
       ═══════════════════════════════════════════════════════════════ */}
-      <section className="relative h-screen flex items-center justify-center">
+      <section className="relative h-screen flex items-center justify-center -mt-16 pt-24">
         {/* Background Layers */}
         <GridBackground className="opacity-50" />
         <NodesAnimation className="opacity-60" />
@@ -61,7 +61,7 @@ export default function HomePage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.6 }}
-            className="text-technical text-ash max-w-xl mx-auto mb-12"
+            className="font-mono text-sm md:text-base text-ash max-w-2xl mx-auto mb-12 leading-relaxed"
           >
             Student-led web agency powered by AI. Premium websites at a fraction
             of the cost. Ship in days, not months.
@@ -72,6 +72,7 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.8 }}
+            className="mb-16"
           >
             <MagneticButton href="/signup">
               START YOUR PROJECT
@@ -83,7 +84,7 @@ export default function HomePage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1.5 }}
-            className="absolute bottom-12 left-1/2 -translate-x-1/2"
+            className="flex flex-col items-center"
           >
             <motion.div
               animate={{ y: [0, 8, 0] }}
@@ -237,7 +238,7 @@ export default function HomePage() {
               READY TO<br />
               <span className="text-cobalt">SHIP FAST?</span>
             </h2>
-            <p className="text-technical text-ash max-w-lg mx-auto mb-12">
+            <p className="text-technical text-ash max-w-2xl mx-auto mb-12">
               Start with our creation wizard. Tell us about your business,
               pick your vibe, and get a proposal in minutes.
             </p>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { JetBrains_Mono, Syne } from "next/font/google";
 import "./globals.css";
 import { LabStatusFooter } from "@/components/layout/LabStatusFooter";
+import { Navbar } from "@/components/layout/Navbar";
 
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-mono",
@@ -35,8 +36,11 @@ export default function RootLayout({
         {/* Noise Overlay */}
         <div className="noise-overlay" />
 
+        {/* Navigation Bar */}
+        <Navbar />
+
         {/* Main Content */}
-        <main className="pb-12">
+        <main className="pt-16 pb-12">
           {children}
         </main>
 

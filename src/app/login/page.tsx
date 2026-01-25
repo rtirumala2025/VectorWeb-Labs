@@ -43,11 +43,11 @@ export default function LoginPage() {
                     initial={{ opacity: 0, x: -30 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.5 }}
-                    className="w-full max-w-md"
+                    className="w-full max-w-md min-w-[360px] px-4"
                 >
                     {/* Header */}
                     <div className="mb-12">
-                        <Link href="/" className="inline-flex items-center gap-2 text-ash hover:text-bone transition-colors mb-8">
+                        <Link href="/" className="inline-flex items-center gap-2 text-ash hover:text-bone transition-colors mb-8 whitespace-nowrap">
                             <ArrowRight size={14} className="rotate-180" />
                             <span className="font-mono text-xs tracking-wider">BACK TO LAB</span>
                         </Link>
@@ -89,13 +89,13 @@ export default function LoginPage() {
                             </button>
                         </div>
 
-                        <div className="flex items-center justify-between">
-                            <label className="flex items-center gap-2 cursor-pointer">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                            <label className="flex items-center gap-2 cursor-pointer whitespace-nowrap">
                                 <input type="checkbox" className="w-4 h-4 bg-carbon border border-steel rounded-none accent-cobalt" />
                                 <span className="text-technical text-ash">Remember me</span>
                             </label>
 
-                            <Link href="#" className="text-technical text-cobalt hover:text-cobalt-glow transition-colors">
+                            <Link href="#" className="text-technical text-cobalt hover:text-cobalt-glow transition-colors whitespace-nowrap">
                                 Forgot password?
                             </Link>
                         </div>
@@ -104,7 +104,7 @@ export default function LoginPage() {
                             type="submit"
                             variant="primary"
                             size="lg"
-                            className="w-full"
+                            className="w-full whitespace-nowrap"
                             disabled={isLoading}
                         >
                             {isLoading ? (

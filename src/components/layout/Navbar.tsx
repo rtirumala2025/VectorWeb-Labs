@@ -1,0 +1,113 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import Link from 'next/link';
+import { Menu, X } from 'lucide-react';
+
+export function Navbar() {
+    const [isScrolled, setIsScrolled] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            setIsScrolled(window.scrollY > 20);
+        };
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    return (
+        <motion.nav
+            initial={{ y: -100 }}
+            animate={{ y: 0 }}
+            transition={{ duration: 0.5 }}
+            className={`
+        fixed top-0 left-0 right-0 z-50
+        transition-all duration-300
+        ${isScrolled
+                    ? 'bg-void/80 backdrop-blur-md border-b border-white/10'
+                    : 'bg-transparent'}
+      `}
+        >
+            <div className="max-w-7xl mx-auto px-6 py-4">
+                <div className="flex items-center justify-between">
+                    {/* Logo */}
+                    <Link href="/" className="flex items-center gap-2 group">
+                        <div className="w-8 h-8 bg-cobalt rounded flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <span className="font-display font-bold text-white text-sm">V</span>
+                        </div>
+                        <span className="font-mono font-bold text-bone tracking-tight text-sm md:text-base">
+                            VECTORWEB LABS
+                        </span>
+                    </Link>
+
+                    {/* Desktop Navigation */}
+                    <div className="hidden md:flex items-center gap-6">
+                        <Link
+                            href="/login"
+                            className="font-mono text-sm text-ash hover:text-bone transition-colors tracking-wider"
+                        >
+                            LOGIN
+                        </Link>
+                        <Link
+                            href="/signup"
+                            className="
+                px-5 py-2.5
+                bg-cobalt text-white
+                font-mono font-bold text-sm uppercase tracking-wider
+                hover:bg-cobalt-dim hover:scale-105
+                transition-all duration-200
+                whitespace-nowrap
+              "
+                        >
+                            START PROJECT
+                        </Link>
+                    </div>
+
+                    {/* Mobile Menu Button */}
+                    <button
+                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                        className="md:hidden p-2 text-ash hover:text-bone transition-colors"
+                    >
+                        {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                    </button>
+                </div>
+
+                {/* Mobile Menu */}
+                {isMobileMenuOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="md:hidden mt-4 pb-4 border-t border-white/10 pt-4"
+                    >
+                        <div className="flex flex-col gap-4">
+                            <Link
+                                href="/login"
+                                className="font-mono text-sm text-ash hover:text-bone transition-colors tracking-wider"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                            >
+                                LOGIN
+                            </Link>
+                            <Link
+                                href="/signup"
+                                className="
+                  px-5 py-2.5 text-center
+                  bg-cobalt text-white
+                  font-mono font-bold text-sm uppercase tracking-wider
+                  hover:bg-cobalt-dim
+                  transition-all duration-200
+                "
+                                onClick={() => setIsMobileMenuOpen(false)}
+                            >
+                                START PROJECT
+                            </Link>
+                        </div>
+                    </motion.div>
+                )}
+            </div>
+        </motion.nav>
+    );
+}
+
+export default Navbar;

@@ -87,7 +87,7 @@ export default function SignupPage() {
                     initial={{ opacity: 0, x: 30 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.5 }}
-                    className="w-full max-w-md"
+                    className="w-full max-w-md min-w-[360px] px-4"
                 >
                     {/* Header */}
                     <div className="mb-12">
@@ -166,7 +166,7 @@ export default function SignupPage() {
                             type="submit"
                             variant="primary"
                             size="lg"
-                            className="w-full"
+                            className="w-full whitespace-nowrap"
                             disabled={isLoading}
                         >
                             {isLoading ? (
