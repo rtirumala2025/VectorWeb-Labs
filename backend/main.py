@@ -102,107 +102,37 @@ class DomainCheckResponse(BaseModel):
     suggestions: list[str] = []
 
 
-class DiscoveryRequest(BaseModel):
-    """Input model for discovery question generation."""
+class DiscoveryRequestNext(BaseModel):
+    """Input model for the adaptive discovery engine."""
     business_name: str
     industry: str
+    current_q_index: int
+    previous_answers: list[dict] = []  # List of {q: str, a: str}
 
 
-class DiscoveryResponse(BaseModel):
-    """Response model for discovery question."""
+class DiscoveryResponseNext(BaseModel):
+    """Response model for discovery question and options."""
     question: str
+    options: list[str]
+    allow_multiple: bool = False
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# HEALTH CHECK ROUTES
-# ══════════════════════════════════════════════════════════════════════════════
-
-@app.get("/")
-async def root():
-    return {"message": "VectorWeb Labs API is running"}
+# ... (existing code)
 
 
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy", "service": "vectorweb-api"}
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# DOMAIN ROUTES
-# ══════════════════════════════════════════════════════════════════════════════
-
-@app.post("/api/check-domain", response_model=DomainCheckResponse)
-async def check_domain(request: DomainCheckRequest):
+@app.post("/api/discovery/next", response_model=DiscoveryResponseNext)
+async def generate_discovery_next(request: DiscoveryRequestNext):
     """
-    Check if a domain is available.
-    If taken, returns AI-generated alternative suggestions.
+    Generate the next technical discovery question based on context.
+    Acts as the 'Dungeon Master' for the scoping phase.
     """
-    result = domains.check_availability(request.domain, request.vibe)
-    return DomainCheckResponse(**result)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# PROJECT ROUTES
-# ══════════════════════════════════════════════════════════════════════════════
-
-@app.get("/api/projects", response_model=list[Project])
-async def get_projects(user_id: str):
-    """Get all projects for a user."""
-    return db.get_projects_by_user(user_id)
-
-
-@app.get("/api/projects/{project_id}", response_model=Project)
-async def get_project(project_id: str):
-    """Fetch a single project by ID."""
-    project = db.get_project(project_id)
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    return project
-
-
-@app.post("/api/projects", response_model=ProjectResponseFull)
-async def create_project(project: ProjectCreate):
-    """
-    Create a new project in the database.
-    
-    1. Save project to Supabase via db.create_project
-    2. Generate AI price quote via ai.generate_quote
-    3. Update the project row with the AI quote
-    4. Return the full project object with the price
-    """
-    # Step 1: Create the project
-    project_data = project.model_dump()
-    project_id = db.create_project(project_data)
-    
-    # Step 2: Generate AI quote
-    ai_quote = ai.generate_quote({
-        "business_name": project.business_name,
-        "website_type": project.website_type or "Portfolio",
-        "target_audience": project.target_audience or "General",
-        "vibe_style": project.vibe_style,
-        "project_scope": project.project_scope
-    })
-    
-    # Step 3: Update project with AI quote (graceful - may fail if migration not applied)
-    try:
-        db.update_project(project_id, {"ai_price_quote": ai_quote})
-    except Exception as e:
-        # Log but don't fail - the project was created successfully
-        print(f"Warning: Could not save AI quote to database (migration may not be applied): {e}")
-    
-    # Step 4: Return response with quote
-    return ProjectResponseFull(
-        project_id=project_id,
-        status="success",
-        ai_quote=ai_quote
+    result = ai.generate_discovery_question(
+        request.business_name, 
+        request.industry, 
+        request.current_q_index, 
+        request.previous_answers
     )
-
-
-@app.post("/api/discovery", response_model=DiscoveryResponse)
-async def generate_discovery(request: DiscoveryRequest):
-    """Generate a technical discovery question."""
-    question = ai.generate_discovery_question(request.business_name, request.industry)
-    return DiscoveryResponse(question=question)
+    return DiscoveryResponseNext(**result)
 
 
 @app.post("/api/projects/{project_id}/pay")

@@ -24,10 +24,13 @@ interface WizardState {
     projectId: string | null;
     aiQuote: AIQuote | null;
 
-    // Discovery Step
-    discoveryQuestion: string | null;
-    discoveryAnswer: string;
+    // Discovery Step (Adaptive Gauntlet)
+    discoveryHistory: Array<{ q: string; a: string }>;
+    currentDiscoveryStep: number; // 0-9
+    currentQuestion: { text: string; options: string[]; allow_multiple?: boolean } | null;
     isGeneratingDiscovery: boolean;
+    isDiscoveryComplete: boolean;
+    currentSelections: string[];
 
     // Actions
     setStep: (step: number) => void;
@@ -52,8 +55,10 @@ interface WizardState {
     canProceed: () => boolean;
 
     // Discovery Actions
-    generateDiscoveryQuestion: () => Promise<void>;
-    setDiscoveryAnswer: (answer: string) => void;
+    startDiscovery: () => Promise<void>;
+    submitDiscoveryAnswer: (answer?: string) => Promise<void>;
+    toggleSelection: (option: string) => void;
+    prevDiscoveryStep: () => void;
 }
 
 const initialState = {
@@ -67,13 +72,20 @@ const initialState = {
     saveError: null as string | null,
     projectId: null as string | null,
     aiQuote: null as AIQuote | null,
-    discoveryQuestion: null as string | null,
-    discoveryAnswer: '',
+
+    // and...
+    discoveryHistory: [],
+    currentDiscoveryStep: 0,
+    currentQuestion: null,
     isGeneratingDiscovery: false,
+    isDiscoveryComplete: false,
+    currentSelections: [],
 };
 
 export const useWizardStore = create<WizardState>((set, get) => ({
     ...initialState,
+
+    // ... (existing actions)
 
     setStep: (step) => set({ currentStep: step }),
 
@@ -102,31 +114,21 @@ export const useWizardStore = create<WizardState>((set, get) => ({
     checkDomain: async (domain) => {
         const { selectedVibe } = get();
         set({ domainStatus: 'checking', domainSuggestions: [] });
-
         try {
-            // Call real API
             const result = await apiClient.checkDomain(domain, selectedVibe || 'modern');
-
             if (result.available) {
                 set({ domainStatus: 'available', domainSuggestions: [] });
             } else {
-                set({
-                    domainStatus: 'taken',
-                    domainSuggestions: result.suggestions || []
-                });
+                set({ domainStatus: 'taken', domainSuggestions: result.suggestions || [] });
             }
         } catch (error) {
             console.error('Domain check failed:', error);
-            // Fallback to mock on error
-            const taken = ['google', 'facebook', 'amazon', 'apple', 'microsoft'].some(
-                (name) => domain.toLowerCase().includes(name)
-            );
-            set({ domainStatus: taken ? 'taken' : 'available' });
+            set({ domainStatus: 'available' }); // Fallback
         }
     },
 
     saveProject: async (userId: string) => {
-        const { businessName, selectedVibe, domain } = get();
+        const { businessName, selectedVibe, domain, discoveryHistory } = get();
 
         if (!selectedVibe) {
             set({ saveStatus: 'error', saveError: 'Please select a vibe style' });
@@ -141,6 +143,7 @@ export const useWizardStore = create<WizardState>((set, get) => ({
                 vibe_style: selectedVibe,
                 user_id: userId,
                 domain_choice: domain.includes('.') ? domain : domain + '.com',
+                project_scope: { discovery: discoveryHistory }
             });
 
             set({
@@ -148,11 +151,9 @@ export const useWizardStore = create<WizardState>((set, get) => ({
                 projectId: response.project_id,
                 aiQuote: response.ai_quote || null
             });
-
             return response.project_id;
         } catch (error) {
-            const message = error instanceof Error ? error.message : 'Failed to save project';
-            set({ saveStatus: 'error', saveError: message });
+            set({ saveStatus: 'error', saveError: (error as Error).message });
             return null;
         }
     },
@@ -160,14 +161,13 @@ export const useWizardStore = create<WizardState>((set, get) => ({
     reset: () => set(initialState),
 
     canProceed: () => {
-        const { currentStep, businessName, discoveryAnswer, selectedVibe, domainStatus } = get();
+        const { currentStep, businessName, isDiscoveryComplete, selectedVibe, domainStatus } = get();
 
         switch (currentStep) {
             case 1: // Identity
                 return businessName.trim().length >= 2;
             case 2: // Discovery
-                // Optional or mandatory? Let's make it mandatory but simple
-                return true;
+                return isDiscoveryComplete;
             case 3: // Vibe
                 return selectedVibe !== null;
             case 4: // Domain
@@ -177,25 +177,125 @@ export const useWizardStore = create<WizardState>((set, get) => ({
         }
     },
 
-    setDiscoveryAnswer: (answer) => set({ discoveryAnswer: answer }),
-
-    generateDiscoveryQuestion: async () => {
-        const { businessName, isGeneratingDiscovery, discoveryQuestion } = get();
-        if (isGeneratingDiscovery || discoveryQuestion) return;
+    startDiscovery: async () => {
+        const { businessName, currentDiscoveryStep, currentQuestion, isGeneratingDiscovery } = get();
+        if (currentQuestion || isGeneratingDiscovery || currentDiscoveryStep > 0) return;
 
         set({ isGeneratingDiscovery: true });
         try {
-            // Use 'modern' as default industry/vibe if not set yet, or infer from name
-            const response = await apiClient.generateDiscovery(businessName, 'modern web presence');
-            set({ discoveryQuestion: response.question, isGeneratingDiscovery: false });
-        } catch (error) {
-            console.error('Discovery generation failed:', error);
+            const response = await apiClient.generateDiscoveryNext(businessName, 'modern web', 0, []);
             set({
-                discoveryQuestion: "What are the primary goals for your new website?",
-                isGeneratingDiscovery: false
+                currentQuestion: {
+                    text: response.question,
+                    options: response.options,
+                    allow_multiple: response.allow_multiple
+                },
+                isGeneratingDiscovery: false,
+                currentSelections: []
             });
+        } catch (error) {
+            console.error(error);
+            set({ isGeneratingDiscovery: false });
         }
     },
+
+    toggleSelection: (option: string) => {
+        const { currentSelections } = get();
+        const exists = currentSelections.includes(option);
+        if (exists) {
+            set({ currentSelections: currentSelections.filter(s => s !== option) });
+        } else {
+            set({ currentSelections: [...currentSelections, option] });
+        }
+    },
+
+    prevDiscoveryStep: async () => {
+        const { currentDiscoveryStep, discoveryHistory, businessName } = get();
+        if (currentDiscoveryStep <= 0) return;
+
+        // Go back one step
+        const newStep = currentDiscoveryStep - 1;
+        // Remove the last answer from history to return to previous state
+        const newHistory = discoveryHistory.slice(0, newStep);
+
+        set({
+            currentDiscoveryStep: newStep,
+            discoveryHistory: newHistory,
+            currentQuestion: null,
+            isGeneratingDiscovery: true,
+            currentSelections: [],
+            isDiscoveryComplete: false
+        });
+
+        try {
+            // Re-fetch the question for this previous step
+            const response = await apiClient.generateDiscoveryNext(businessName, 'modern web', newStep, newHistory);
+            set({
+                currentQuestion: {
+                    text: response.question,
+                    options: response.options,
+                    allow_multiple: response.allow_multiple
+                },
+                isGeneratingDiscovery: false
+            });
+        } catch (error) {
+            console.error('Failed to fetch previous question:', error);
+            set({ isGeneratingDiscovery: false });
+        }
+    },
+
+    submitDiscoveryAnswer: async (answer?: string) => {
+        const { currentQuestion, currentDiscoveryStep, discoveryHistory, businessName, currentSelections } = get();
+        if (!currentQuestion) return;
+
+        // Determine final answer (single arg or multi-select state)
+        let finalAnswer = answer;
+        if (!finalAnswer) {
+            // If no arg, treat as multi-select submission
+            if (currentSelections.length === 0) return; // Prevent empty submission
+            finalAnswer = currentSelections.join(', ');
+        }
+
+        // 1. Update history
+        const newHistory = [...discoveryHistory, { q: currentQuestion.text, a: finalAnswer }];
+        const nextStep = currentDiscoveryStep + 1;
+
+        // 2. Check completion (Limit to 10 steps)
+        if (nextStep >= 10) {
+            set({
+                discoveryHistory: newHistory,
+                currentDiscoveryStep: nextStep,
+                currentQuestion: null,
+                isDiscoveryComplete: true,
+                currentSelections: []
+            });
+            return;
+        }
+
+        // 3. Generate Next Question
+        set({
+            discoveryHistory: newHistory,
+            currentDiscoveryStep: nextStep,
+            currentQuestion: null,
+            isGeneratingDiscovery: true,
+            currentSelections: []
+        });
+
+        try {
+            const response = await apiClient.generateDiscoveryNext(businessName, 'modern web', nextStep, newHistory);
+            set({
+                currentQuestion: {
+                    text: response.question,
+                    options: response.options,
+                    allow_multiple: response.allow_multiple
+                },
+                isGeneratingDiscovery: false
+            });
+        } catch (error) {
+            console.error('Failed to get next question:', error);
+            set({ isGeneratingDiscovery: false, isDiscoveryComplete: true });
+        }
+    }
 }));
 
 // Pre-filled mock data for demo

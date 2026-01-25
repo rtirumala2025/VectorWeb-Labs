@@ -260,7 +260,7 @@ and initiates the design phase. Given current demand, estimated delivery is 10-1
                         <span className="font-mono text-xs tracking-wider">BACK TO WIZARD</span>
                     </Link>
 
-                    <h1 className="headline-lg mb-4">YOUR<br />PROPOSAL</h1>
+                    <h1 className="headline-lg mb-4 text-6xl">YOUR<br />PROPOSAL</h1>
                     <p className="text-technical text-ash">
                         Review your project details and sign to proceed.
                     </p>
@@ -271,34 +271,34 @@ and initiates the design phase. Given current demand, estimated delivery is 10-1
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.15 }}
-                    className="flex gap-2 mb-8"
+                    className="flex gap-1 mb-8 bg-white/5 border border-white/10 rounded-full p-1 w-max"
                 >
                     <button
                         onClick={() => setActiveTab('summary')}
-                        className={`flex items-center gap-2 px-4 py-2 font-mono text-xs transition-all
+                        className={`flex items-center gap-2 px-4 py-1.5 font-mono text-xs transition-all rounded-full
                             ${activeTab === 'summary'
-                                ? 'bg-cobalt text-white'
-                                : 'bg-carbon border border-steel text-ash hover:text-bone'}`}
+                                ? 'bg-blue-600 text-white shadow-md'
+                                : 'text-gray-400 hover:text-white'}`}
                     >
                         <LayoutDashboard size={14} />
                         SUMMARY
                     </button>
                     <button
                         onClick={() => setActiveTab('contract')}
-                        className={`flex items-center gap-2 px-4 py-2 font-mono text-xs transition-all
+                        className={`flex items-center gap-2 px-4 py-1.5 font-mono text-xs transition-all rounded-full
                             ${activeTab === 'contract'
-                                ? 'bg-cobalt text-white'
-                                : 'bg-carbon border border-steel text-ash hover:text-bone'}`}
+                                ? 'bg-blue-600 text-white shadow-md'
+                                : 'text-gray-400 hover:text-white'}`}
                     >
                         <FileSignature size={14} />
                         CONTRACT
                     </button>
                     <button
                         onClick={() => setActiveTab('invoice')}
-                        className={`flex items-center gap-2 px-4 py-2 font-mono text-xs transition-all
+                        className={`flex items-center gap-2 px-4 py-1.5 font-mono text-xs transition-all rounded-full
                             ${activeTab === 'invoice'
-                                ? 'bg-cobalt text-white'
-                                : 'bg-carbon border border-steel text-ash hover:text-bone'}`}
+                                ? 'bg-blue-600 text-white shadow-md'
+                                : 'text-gray-400 hover:text-white'}`}
                     >
                         <Receipt size={14} />
                         INVOICE

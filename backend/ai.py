@@ -206,35 +206,82 @@ Return ONLY a JSON list of strings, no other text."""
         ]
 
 
-def generate_discovery_question(business_name: str, industry: str) -> str:
+def generate_discovery_question(business_name: str, industry: str, current_q_index: int, previous_answers: list[dict]) -> dict:
     """
-    Generate a high-value technical discovery question for the business.
+    Generate a technical discovery question for the Gauntlet phase.
     
     Args:
         business_name: The name of the client's business.
-        industry: The industry/vibe (e.g., "modern", "restaurant", "tech").
+        industry: The industry/vibe.
+        current_q_index: The current step index (0-9).
+        previous_answers: List of {q, a} dicts from previous steps.
     
     Returns:
-        str: A single technical question.
+        dict: {
+            "question": str,
+            "options": list[str]
+        }
     """
     if not client:
-        return "What are the primary goals for your new website?"
+        # Fallbacks for offline/no-key mode
+        if current_q_index == 0:
+            return {
+                "question": "What are the main goals of your new website?",
+                "options": [
+                    "Get more local customers to call me",
+                    "Sell products directly online",
+                    "Showcase my portfolio of work",
+                    "Allow clients to book appointments"
+                ],
+                "allow_multiple": True
+            }
+        return {
+            "question": f"Question {current_q_index + 1}: How many customers do you serve weekly?",
+            "options": ["Just starting out", "1-50 customers", "50-500 customers", "500+ (High volume)"],
+            "allow_multiple": False
+        }
 
-    system_prompt = """Role: Senior Technical Architect at a high-end web agency.
-Goal: Ask ONE high-impact technical question to scope the project correctly.
-Style: Professional, direct, slightly technical but accessible.
-Output: Return ONLY the question string. No quotes, no intro."""
+    system_prompt = """Role: You are a friendly, non-technical Web Agency Consultant. 
+Your client is a small business owner (e.g., landscaper, dentist, cafe owner) who may not know what a 'CMS' or 'API' is.
+
+Rules for Questions:
+1. No Jargon: Never use words like 'SPA', 'React', 'Stack', 'Backend', 'Database', or 'Auth'.
+2. Focus on Outcomes: Ask about what the business needs to do (e.g., 'Take bookings', 'Sell products', 'Show photos').
+3. Tone: Professional but accessible. Simple English.
+4. Adaptive Logic:
+   - If Restaurant -> Ask about Menus/Reservations.
+   - If Service -> Ask about Quote Forms/Service Areas.
+   - If Retail -> Ask about Shipping/Pickup.
+5. Multi-Select Logic (CRITICAL):
+   - If asking about "Features", "Goals", "Pain Points", "Services", or "Requirements", ALWAYS set "allow_multiple": true.
+   - If asking about "Budget" or "Timeline", set "allow_multiple": false.
+   - Example Multi-Select: "Which features do you need?" -> allow_multiple: true.
+
+Output STRICT JSON format:
+{
+  "question": "The question string",
+  "options": ["Option A", "Option B", "Option C", "Option D"],
+  "allow_multiple": boolean
+}"""
 
     user_prompt = f"""Client: {business_name}
-Industry/Vibe: {industry}
+Industry: {industry}
+Current Step: {current_q_index + 1}/10
+Previous Answers: {json.dumps(previous_answers, indent=2)}
 
-Generate one specific question to determine if they need complex features (e.g. CMS, E-commerce, Auth) or just a static site.
-Example: "Will you need a customer login portal or just a contact form?"
-Question:"""
+Task: Generate question #{current_q_index + 1}.
+If Step 1, ask: "What are the main goals of your new website?" with options: ["Get more local customers", "Sell products online", "Showcase portfolio", "Book appointments"].
+If Step > 1, look at previous answers and ask a logical follow-up about BUSINESS NEEDS, not technology.
+
+JSON Response:"""
 
     try:
         response = _call_openrouter(system_prompt, user_prompt)
-        return response.strip().replace('"', '')
+        cleaned = _strip_markdown_json(response)
+        return json.loads(cleaned)
     except Exception as e:
         print(f"Discovery question generation error: {e}")
-        return "Will you need e-commerce functionality or just a portfolio display?"
+        return {
+            "question": "What is your estimated timeline for launch?",
+            "options": ["ASAP (1-2 weeks)", "Standard (4-6 weeks)", "Flexible (2-3 months)", "No strict deadline"]
+        }

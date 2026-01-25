@@ -2,108 +2,180 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Terminal, MessageSquare } from 'lucide-react';
+import { Terminal, Cpu, ChevronRight, ChevronLeft } from 'lucide-react';
 import { useWizardStore } from '@/stores/wizardStore';
-import { Button } from '@/components/ui/Button';
+
+// Matrix Text Effect Component
+const MatrixText = ({ text }: { text: string }) => {
+    return <span className="font-mono text-cobalt animate-pulse">{text}</span>;
+}
 
 export function StepDiscovery() {
     const {
         businessName,
-        discoveryQuestion,
-        discoveryAnswer,
-        setDiscoveryAnswer,
-        generateDiscoveryQuestion,
-        isGeneratingDiscovery
+        currentDiscoveryStep,
+        currentQuestion,
+        currentSelections,
+        isGeneratingDiscovery,
+        startDiscovery,
+        submitDiscoveryAnswer,
+        toggleSelection,
+        prevDiscoveryStep
     } = useWizardStore();
 
-    // Trigger AI generation on mount
+    // Trigger AI generation start on mount
     useEffect(() => {
-        generateDiscoveryQuestion();
-    }, [generateDiscoveryQuestion]);
+        startDiscovery();
+    }, [startDiscovery]);
+
+    // Format step number (01/10)
+    const stepNumber = String(currentDiscoveryStep + 1).padStart(2, '0');
+
+    const handleOptionClick = (option: string) => {
+        if (currentQuestion?.allow_multiple) {
+            toggleSelection(option);
+        } else {
+            submitDiscoveryAnswer(option);
+        }
+    };
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen px-6 py-12">
-            <motion.span
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-label text-cobalt block mb-8"
-            >
-                STEP 02 — SCOPING
-            </motion.span>
-
+        <div className="flex flex-col items-center justify-center min-h-screen px-6 py-12 w-full max-w-4xl mx-auto">
+            {/* Header */}
             <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="w-full max-w-2xl bg-carbon/50 border border-steel p-8 backdrop-blur-sm relative overflow-hidden"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="w-full flex justify-between items-center mb-12 border-b border-steel/30 pb-4"
             >
-                {/* AI Processing State */}
+                <div className="flex items-center gap-6">
+                    {/* Back Button */}
+                    <button
+                        onClick={prevDiscoveryStep}
+                        disabled={currentDiscoveryStep === 0 || isGeneratingDiscovery}
+                        className={`p-2 rounded-full border border-steel transition-colors 
+                            ${currentDiscoveryStep === 0 || isGeneratingDiscovery
+                                ? 'opacity-30 cursor-not-allowed text-ash'
+                                : 'hover:border-cobalt hover:text-white text-ash'}`}
+                    >
+                        <ChevronLeft size={16} />
+                    </button>
+
+                    <div className="flex items-center gap-3">
+                        <Terminal size={18} className="text-cobalt" />
+                        <span className="text-xs font-mono text-ash tracking-widest">
+                            DISCOVERY_PROTOCOL_V2.0
+                        </span>
+                    </div>
+                </div>
+                <span className="font-display text-cobalt text-xl">
+                    STEP {stepNumber}<span className="text-ash text-sm">/10</span>
+                </span>
+            </motion.div>
+
+            {/* Main Content Area */}
+            <div className="w-full relative min-h-[400px]">
                 <AnimatePresence mode="wait">
-                    {isGeneratingDiscovery ? (
+                    {isGeneratingDiscovery || !currentQuestion ? (
                         <motion.div
-                            key="thinking"
+                            key="loading"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="flex flex-col items-center justify-center py-12"
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="absolute inset-0 flex flex-col items-center justify-center text-center"
                         >
-                            <Sparkles className="text-cobalt w-12 h-12 mb-6 animate-pulse" />
-                            <h3 className="font-display text-xl text-bone mb-2">SCOUT AI IS ANALYZING...</h3>
-                            <p className="font-mono text-sm text-ash text-center max-w-sm">
-                                Studying {businessName} to ask the right technical questions.
+                            <div className="w-16 h-16 border border-cobalt/30 border-t-cobalt rounded-full animate-spin mb-6" />
+                            <h3 className="font-display text-2xl text-bone mb-2 tracking-wide">
+                                ANALYZING VECTORS
+                            </h3>
+                            <p className="font-mono text-xs text-cobalt">
+                                <MatrixText text={`PROCESSING DATA FOR ${businessName.toUpperCase()}...`} />
                             </p>
-
-                            {/* Scanning effect */}
-                            <motion.div
-                                className="absolute top-0 left-0 w-full h-1 bg-cobalt/50 shadow-[0_0_20px_#0047FF]"
-                                animate={{ top: ['0%', '100%', '0%'] }}
-                                transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-                            />
                         </motion.div>
                     ) : (
                         <motion.div
                             key="question"
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.2 }}
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            className="w-full"
                         >
-                            <div className="flex items-start gap-4 mb-8">
-                                <div className="p-3 bg-cobalt/10 rounded-lg border border-cobalt/20">
-                                    <Terminal className="text-cobalt w-6 h-6" />
-                                </div>
-                                <div>
-                                    <span className="font-mono text-xs text-cobalt mb-2 block">VECTORWEB SCOUT SAYS:</span>
-                                    <h3 className="font-display text-2xl text-bone leading-tight">
-                                        {discoveryQuestion || "What are the primary goals for your new website?"}
-                                    </h3>
-                                </div>
+                            {/* Question */}
+                            <h2 className="text-3xl md:text-4xl font-display text-bone leading-tight mb-4 text-center">
+                                {currentQuestion.text}
+                            </h2>
+                            {currentQuestion.allow_multiple && (
+                                <p className="text-center text-ash font-mono text-xs mb-8">
+                                    [MULTI-SELECT ENABLED: CHOOSE ALL THAT APPLY]
+                                </p>
+                            )}
+                            {!currentQuestion.allow_multiple && <div className="mb-12" />}
+
+                            {/* Options Grid */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {currentQuestion.options.map((option, idx) => {
+                                    const isSelected = currentSelections.includes(option);
+                                    return (
+                                        <motion.button
+                                            key={idx}
+                                            whileHover={{ scale: 1.02 }}
+                                            whileTap={{ scale: 0.98 }}
+                                            onClick={() => handleOptionClick(option)}
+                                            className={`group relative flex items-center justify-between p-6 border transition-all text-left
+                                                ${isSelected
+                                                    ? 'bg-cobalt/20 border-cobalt'
+                                                    : 'bg-carbon/40 border-steel hover:bg-carbon/60 hover:border-cobalt/50'
+                                                }`}
+                                        >
+                                            <span className={`font-mono text-sm transition-colors relative z-10 w-[90%] 
+                                                ${isSelected ? 'text-white' : 'text-ash group-hover:text-bone'}`}>
+                                                {option}
+                                            </span>
+
+                                            {/* Checkbox / Arrow Visual */}
+                                            {currentQuestion.allow_multiple ? (
+                                                <div className={`w-5 h-5 border flex items-center justify-center transition-colors
+                                                    ${isSelected ? 'bg-cobalt border-cobalt' : 'border-steel group-hover:border-cobalt'}`}>
+                                                    {isSelected && <ChevronRight size={14} className="text-white" />}
+                                                </div>
+                                            ) : (
+                                                <ChevronRight className="text-steel group-hover:text-cobalt group-hover:translate-x-1 transition-all" size={20} />
+                                            )}
+                                        </motion.button>
+                                    );
+                                })}
                             </div>
 
-                            <div className="relative">
-                                <textarea
-                                    value={discoveryAnswer}
-                                    onChange={(e) => setDiscoveryAnswer(e.target.value)}
-                                    placeholder="Type your answer here..."
-                                    className="w-full h-32 bg-void border border-steel p-4 text-bone font-mono text-sm focus:border-cobalt outline-none resize-none transition-colors"
-                                    autoFocus
-                                />
-                                <div className="absolute bottom-4 right-4 text-xs text-ash font-mono">
-                                    {discoveryAnswer.length} chars
-                                </div>
-                            </div>
+                            {/* Continue Button for Multi-Select */}
+                            {currentQuestion.allow_multiple && (
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    className="mt-8 text-center"
+                                >
+                                    <button
+                                        onClick={() => submitDiscoveryAnswer()}
+                                        disabled={currentSelections.length === 0}
+                                        className="bg-cobalt text-white font-mono text-sm px-8 py-3 hover:bg-cobalt/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        CONFIRM_SELECTION &gt;&gt;
+                                    </button>
+                                </motion.div>
+                            )}
                         </motion.div>
                     )}
                 </AnimatePresence>
-            </motion.div>
+            </div>
 
-            {/* Context/Help */}
-            <motion.p
+            {/* Context Footer */}
+            <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 1.5 }}
-                className="text-technical text-ash mt-8 text-center max-w-lg"
+                transition={{ delay: 0.5 }}
+                className="mt-12 flex items-center gap-2 text-xs font-mono text-ash/50"
             >
-                Start typing to continue. Your answer helps us determine the correct tech stack and pricing.
-            </motion.p>
+                <Cpu size={14} />
+                <span>NEURAL ENGINE ACTIVE • ADAPTIVE MODE</span>
+            </motion.div>
         </div>
     );
 }

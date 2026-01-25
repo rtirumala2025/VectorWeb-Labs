@@ -46,7 +46,7 @@ export function SignaturePad({ onSign }: SignaturePadProps) {
                 </div>
             </div>
 
-            <div className="relative border-2 border-dashed border-steel bg-carbon/50 mb-4 hover:border-cobalt transition-colors">
+            <div className="relative border-2 border-dashed border-steel bg-[#1a1a1a] mb-4 hover:border-cobalt transition-colors">
                 <SignatureCanvas
                     ref={sigCanvas}
                     penColor="#0047FF"
@@ -66,7 +66,7 @@ export function SignaturePad({ onSign }: SignaturePadProps) {
             <div className="flex justify-between items-center">
                 <button
                     onClick={clear}
-                    className="flex items-center gap-2 text-xs font-mono text-ash hover:text-red-400 transition-colors"
+                    className="flex items-center gap-2 text-xs font-mono text-red-500 hover:text-red-400 transition-colors"
                 >
                     <Eraser size={12} />
                     CLEAR_PAD

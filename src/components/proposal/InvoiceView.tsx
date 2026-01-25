@@ -101,10 +101,10 @@ export function InvoiceView({ project }: InvoiceViewProps) {
                     <thead>
                         <tr className="bg-carbon border-b border-steel text-xs uppercase text-ash">
                             <th className="p-4 font-normal w-24">ID</th>
-                            <th className="p-4 font-normal">DESCRIPTION</th>
-                            <th className="p-4 font-normal text-right">QTY</th>
-                            <th className="p-4 font-normal text-right">RATE</th>
-                            <th className="p-4 font-normal text-right">TOTAL</th>
+                            <th className="p-4 font-normal w-[50%]">DESCRIPTION</th>
+                            <th className="p-4 font-normal text-right whitespace-nowrap">QTY</th>
+                            <th className="p-4 font-normal text-right whitespace-nowrap">RATE</th>
+                            <th className="p-4 font-normal text-right whitespace-nowrap">TOTAL</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-steel/30">
@@ -118,7 +118,7 @@ export function InvoiceView({ project }: InvoiceViewProps) {
                                 <td className="p-4 text-right">{service.quantity}</td>
                                 <td className="p-4 text-right text-ash">
                                     {service.note ? (
-                                        <span className="text-green-400">{service.note}</span>
+                                        <span className="text-green-400 whitespace-nowrap">{service.note}</span>
                                     ) : (
                                         `$${service.rate}`
                                     )}

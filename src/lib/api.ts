@@ -64,6 +64,12 @@ export interface DiscoveryResponse {
     question: string;
 }
 
+export interface DiscoveryResponseNext {
+    question: string;
+    options: string[];
+    allow_multiple?: boolean;
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // API CLIENT
 // ══════════════════════════════════════════════════════════════════════════════
@@ -121,10 +127,20 @@ class ApiClient {
         });
     }
 
-    async generateDiscovery(businessName: string, industry: string): Promise<DiscoveryResponse> {
-        return this.request('/api/discovery', {
+    async generateDiscoveryNext(
+        businessName: string,
+        industry: string,
+        currentQIndex: number,
+        previousAnswers: Array<{ q: string; a: string }>
+    ): Promise<DiscoveryResponseNext> {
+        return this.request('/api/discovery/next', {
             method: 'POST',
-            body: JSON.stringify({ business_name: businessName, industry }),
+            body: JSON.stringify({
+                business_name: businessName,
+                industry,
+                current_q_index: currentQIndex,
+                previous_answers: previousAnswers
+            }),
         });
     }
 
