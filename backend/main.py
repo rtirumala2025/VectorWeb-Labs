@@ -117,7 +117,23 @@ class DiscoveryResponseNext(BaseModel):
     allow_multiple: bool = False
 
 
-# ... (existing code)
+
+@app.post("/api/projects", response_model=ProjectResponseFull)
+async def create_project(project: ProjectCreate):
+    """
+    Create a new project, generate AI quote, and save to DB.
+    """
+    # 1. Save initial draft
+    project_id = db.create_project(project.dict())
+
+    # 2. AI Estimation (Immediate)
+    quote_data = ai.generate_quote(project.dict())
+
+    # 3. Update DB with Quote
+    updated_project = db.update_project_quote(project_id, quote_data)
+
+    return updated_project
+
 
 
 @app.post("/api/discovery/next", response_model=DiscoveryResponseNext)

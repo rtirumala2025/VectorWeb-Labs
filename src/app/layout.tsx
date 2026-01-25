@@ -3,6 +3,7 @@ import { JetBrains_Mono, Syne } from "next/font/google";
 import "./globals.css";
 import { LabStatusFooter } from "@/components/layout/LabStatusFooter";
 import { Navbar } from "@/components/layout/Navbar";
+import { VectorBot } from "@/components/ui/VectorBot";
 
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-mono",
@@ -46,6 +47,9 @@ export default function RootLayout({
 
         {/* Persistent Lab Status Footer */}
         <LabStatusFooter />
+
+        {/* Floating AI Assistant */}
+        <VectorBot />
       </body>
     </html>
   );

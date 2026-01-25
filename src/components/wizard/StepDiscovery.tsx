@@ -17,10 +17,12 @@ export function StepDiscovery() {
         currentQuestion,
         currentSelections,
         isGeneratingDiscovery,
+        isDiscoveryComplete, // Subscribe to completion
         startDiscovery,
         submitDiscoveryAnswer,
         toggleSelection,
-        prevDiscoveryStep
+        prevDiscoveryStep,
+        nextStep // Subscribe to nextStep
     } = useWizardStore();
 
     // Trigger AI generation start on mount
@@ -38,6 +40,39 @@ export function StepDiscovery() {
             submitDiscoveryAnswer(option);
         }
     };
+
+    // Render Completion State
+    if (isDiscoveryComplete) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen px-6 py-12 w-full max-w-4xl mx-auto">
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="w-full max-w-lg bg-carbon/60 border border-green-500/30 p-12 text-center rounded-lg relative overflow-hidden"
+                >
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-green-500 to-transparent opacity-50" />
+
+                    <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-8 border border-green-500/50">
+                        <Terminal size={40} className="text-green-500" />
+                    </div>
+
+                    <h2 className="text-3xl font-display text-green-400 mb-4">DISCOVERY COMPLETE</h2>
+                    <p className="text-ash font-mono text-sm mb-8">
+                        Protocol finished. 10/10 vectors analyzed.<br />
+                        System is ready for visual style selection.
+                    </p>
+
+                    <button
+                        onClick={nextStep}
+                        className="w-full bg-green-600 hover:bg-green-500 text-black font-mono font-bold py-4 rounded transition-all flex items-center justify-center gap-2"
+                    >
+                        <span>PROCEED_TO_VIBE_CHECK</span>
+                        <ChevronRight size={18} />
+                    </button>
+                </motion.div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col items-center justify-center min-h-screen px-6 py-12 w-full max-w-4xl mx-auto">
