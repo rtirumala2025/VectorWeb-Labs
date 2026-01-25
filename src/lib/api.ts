@@ -4,21 +4,65 @@
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-interface ProjectCreateData {
+// ══════════════════════════════════════════════════════════════════════════════
+// TYPES
+// ══════════════════════════════════════════════════════════════════════════════
+
+export interface ProjectCreateData {
     business_name: string;
     vibe_style: string;
     user_id: string;
     domain_choice: string;
+    client_phone?: string;
+    website_type?: string;
+    target_audience?: string;
+    project_scope?: Record<string, unknown>;
 }
 
-interface ProjectResponse {
+export interface AIQuote {
+    price: number;
+    reasoning: string;
+    features: string[];
+    risks: string[];
+    suggested_stack: string;
+}
+
+export interface ProjectResponse {
     project_id: string;
     status: string;
+    ai_quote?: AIQuote;
+}
+
+export interface Project {
+    id: string;
+    user_id?: string;
+    business_name: string;
+    vibe_style: string;
+    domain_choice: string;
+    status: string;
+    created_at: string;
+    client_phone?: string;
+    website_type?: string;
+    target_audience?: string;
+    deposit_paid?: boolean;
+    project_scope?: Record<string, unknown>;
+    ai_price_quote?: AIQuote;
+}
+
+export interface DomainCheckResponse {
+    available: boolean;
+    domain: string;
+    suggestions: string[];
+    warning?: string;
 }
 
 interface ApiError {
     detail: string;
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// API CLIENT
+// ══════════════════════════════════════════════════════════════════════════════
 
 class ApiClient {
     private baseUrl: string;
@@ -54,9 +98,28 @@ class ApiClient {
         return response.json();
     }
 
+    // ────────────────────────────────────────────────────────────────────────────
+    // Health
+    // ────────────────────────────────────────────────────────────────────────────
+
     async healthCheck(): Promise<{ message: string }> {
         return this.request('/');
     }
+
+    // ────────────────────────────────────────────────────────────────────────────
+    // Domain
+    // ────────────────────────────────────────────────────────────────────────────
+
+    async checkDomain(domain: string, vibe: string): Promise<DomainCheckResponse> {
+        return this.request('/api/check-domain', {
+            method: 'POST',
+            body: JSON.stringify({ domain, vibe }),
+        });
+    }
+
+    // ────────────────────────────────────────────────────────────────────────────
+    // Projects
+    // ────────────────────────────────────────────────────────────────────────────
 
     async createProject(data: ProjectCreateData): Promise<ProjectResponse> {
         return this.request('/api/projects', {
@@ -65,15 +128,12 @@ class ApiClient {
         });
     }
 
-    async getProjects(userId: string): Promise<Project[]> {
-        return this.request(`/api/projects?user_id=${userId}`);
+    async getProject(projectId: string): Promise<Project> {
+        return this.request(`/api/projects/${projectId}`);
     }
 
-    async chat(message: string, projectId: string): Promise<{ response: string }> {
-        return this.request('/api/chat', {
-            method: 'POST',
-            body: JSON.stringify({ message, project_id: projectId }),
-        });
+    async getProjects(userId: string): Promise<Project[]> {
+        return this.request(`/api/projects?user_id=${userId}`);
     }
 
     async payProject(projectId: string): Promise<{ status: string }> {
@@ -81,17 +141,17 @@ class ApiClient {
             method: 'POST',
         });
     }
-}
 
-export interface Project {
-    id: string;
-    business_name: string;
-    vibe_style: string;
-    domain_choice: string;
-    status: string;
-    created_at: string;
+    // ────────────────────────────────────────────────────────────────────────────
+    // Chat
+    // ────────────────────────────────────────────────────────────────────────────
+
+    async chat(message: string, projectId: string): Promise<{ response: string }> {
+        return this.request('/api/chat', {
+            method: 'POST',
+            body: JSON.stringify({ message, project_id: projectId }),
+        });
+    }
 }
 
 export const apiClient = new ApiClient(API_BASE_URL);
-
-export type { ProjectCreateData, ProjectResponse };

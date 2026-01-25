@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { apiClient } from '@/lib/api';
+import { apiClient, AIQuote } from '@/lib/api';
 
 export type VibeType = 'modern' | 'classic' | 'bold' | null;
 
@@ -16,11 +16,13 @@ interface WizardState {
     // Step 3: Domain
     domain: string;
     domainStatus: 'idle' | 'checking' | 'available' | 'taken';
+    domainSuggestions: string[];
 
     // Save state
     saveStatus: 'idle' | 'saving' | 'success' | 'error';
     saveError: string | null;
     projectId: string | null;
+    aiQuote: AIQuote | null;
 
     // Actions
     setStep: (step: number) => void;
@@ -32,7 +34,7 @@ interface WizardState {
     setDomain: (domain: string) => void;
     setDomainStatus: (status: 'idle' | 'checking' | 'available' | 'taken') => void;
 
-    // Mock domain check
+    // Real domain check via API
     checkDomain: (domain: string) => Promise<void>;
 
     // Save project to backend
@@ -51,9 +53,11 @@ const initialState = {
     selectedVibe: null as VibeType,
     domain: '',
     domainStatus: 'idle' as const,
+    domainSuggestions: [] as string[],
     saveStatus: 'idle' as const,
     saveError: null as string | null,
     projectId: null as string | null,
+    aiQuote: null as AIQuote | null,
 };
 
 export const useWizardStore = create<WizardState>((set, get) => ({
@@ -79,22 +83,34 @@ export const useWizardStore = create<WizardState>((set, get) => ({
 
     setVibe: (vibe) => set({ selectedVibe: vibe }),
 
-    setDomain: (domain) => set({ domain, domainStatus: 'idle' }),
+    setDomain: (domain) => set({ domain, domainStatus: 'idle', domainSuggestions: [] }),
 
     setDomainStatus: (status) => set({ domainStatus: status }),
 
     checkDomain: async (domain) => {
-        set({ domainStatus: 'checking' });
+        const { selectedVibe } = get();
+        set({ domainStatus: 'checking', domainSuggestions: [] });
 
-        // Simulate API latency
-        await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000));
+        try {
+            // Call real API
+            const result = await apiClient.checkDomain(domain, selectedVibe || 'modern');
 
-        // Mock: certain patterns are "taken"
-        const taken = ['google', 'facebook', 'amazon', 'apple', 'microsoft'].some(
-            (name) => domain.toLowerCase().includes(name)
-        );
-
-        set({ domainStatus: taken ? 'taken' : 'available' });
+            if (result.available) {
+                set({ domainStatus: 'available', domainSuggestions: [] });
+            } else {
+                set({
+                    domainStatus: 'taken',
+                    domainSuggestions: result.suggestions || []
+                });
+            }
+        } catch (error) {
+            console.error('Domain check failed:', error);
+            // Fallback to mock on error
+            const taken = ['google', 'facebook', 'amazon', 'apple', 'microsoft'].some(
+                (name) => domain.toLowerCase().includes(name)
+            );
+            set({ domainStatus: taken ? 'taken' : 'available' });
+        }
     },
 
     saveProject: async (userId: string) => {
@@ -112,12 +128,13 @@ export const useWizardStore = create<WizardState>((set, get) => ({
                 business_name: businessName,
                 vibe_style: selectedVibe,
                 user_id: userId,
-                domain_choice: domain + '.com',
+                domain_choice: domain.includes('.') ? domain : domain + '.com',
             });
 
             set({
                 saveStatus: 'success',
-                projectId: response.project_id
+                projectId: response.project_id,
+                aiQuote: response.ai_quote || null
             });
 
             return response.project_id;

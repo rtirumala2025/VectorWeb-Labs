@@ -11,8 +11,10 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-# Import database service
+# Import services
 import db
+import ai
+import domains
 
 # Load environment variables
 load_dotenv()
@@ -50,10 +52,11 @@ class ProjectCreate(BaseModel):
     project_scope: Optional[dict] = None
 
 
-class ProjectResponse(BaseModel):
-    """Response model for project creation."""
+class ProjectResponseFull(BaseModel):
+    """Full response model for project creation with AI quote."""
     project_id: str
     status: str
+    ai_quote: Optional[dict] = None
 
 
 class Project(BaseModel):
@@ -64,11 +67,13 @@ class Project(BaseModel):
     domain_choice: str
     status: str
     created_at: str
+    user_id: Optional[str] = None
     client_phone: Optional[str] = None
     website_type: Optional[str] = None
     target_audience: Optional[str] = None
     deposit_paid: Optional[bool] = False
     project_scope: Optional[dict] = None
+    ai_price_quote: Optional[dict] = None
 
     class Config:
         extra = "ignore"
@@ -85,6 +90,20 @@ class ChatResponse(BaseModel):
     response: str
 
 
+class DomainCheckRequest(BaseModel):
+    """Input model for domain check."""
+    domain: str
+    vibe: str = "modern"
+
+
+class DomainCheckResponse(BaseModel):
+    """Response model for domain check."""
+    available: bool
+    domain: str
+    suggestions: list[str] = []
+    warning: Optional[str] = None
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # HEALTH CHECK ROUTES
 # ══════════════════════════════════════════════════════════════════════════════
@@ -97,6 +116,20 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "service": "vectorweb-api"}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# DOMAIN ROUTES
+# ══════════════════════════════════════════════════════════════════════════════
+
+@app.post("/api/check-domain", response_model=DomainCheckResponse)
+async def check_domain(request: DomainCheckRequest):
+    """
+    Check if a domain is available.
+    If taken, returns AI-generated alternative suggestions.
+    """
+    result = domains.check_availability(request.domain, request.vibe)
+    return DomainCheckResponse(**result)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -118,11 +151,42 @@ async def get_project(project_id: str):
     return project
 
 
-@app.post("/api/projects", response_model=ProjectResponse)
+@app.post("/api/projects", response_model=ProjectResponseFull)
 async def create_project(project: ProjectCreate):
-    """Create a new project in the database."""
-    project_id = db.create_project(project.model_dump())
-    return ProjectResponse(project_id=project_id, status="success")
+    """
+    Create a new project in the database.
+    
+    1. Save project to Supabase via db.create_project
+    2. Generate AI price quote via ai.generate_quote
+    3. Update the project row with the AI quote
+    4. Return the full project object with the price
+    """
+    # Step 1: Create the project
+    project_data = project.model_dump()
+    project_id = db.create_project(project_data)
+    
+    # Step 2: Generate AI quote
+    ai_quote = ai.generate_quote({
+        "business_name": project.business_name,
+        "website_type": project.website_type or "Portfolio",
+        "target_audience": project.target_audience or "General",
+        "vibe_style": project.vibe_style,
+        "project_scope": project.project_scope
+    })
+    
+    # Step 3: Update project with AI quote (graceful - may fail if migration not applied)
+    try:
+        db.update_project(project_id, {"ai_price_quote": ai_quote})
+    except Exception as e:
+        # Log but don't fail - the project was created successfully
+        print(f"Warning: Could not save AI quote to database (migration may not be applied): {e}")
+    
+    # Step 4: Return response with quote
+    return ProjectResponseFull(
+        project_id=project_id,
+        status="success",
+        ai_quote=ai_quote
+    )
 
 
 @app.post("/api/projects/{project_id}/pay")
@@ -168,7 +232,7 @@ async def chat_with_ai(chat: ChatMessage):
                 "HTTP-Referer": "http://localhost:3000",
                 "X-Title": "VectorWeb Labs",
             },
-            model="google/gemini-2.0-flash-lite-preview-02-05:free",
+            model="meta-llama/llama-3.3-70b-instruct:free",
             messages=[
                 {
                     "role": "system", 

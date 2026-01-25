@@ -56,7 +56,7 @@ function Step1() {
                 animate={{ opacity: 1, y: 0 }}
                 className="text-label text-cobalt block mb-8"
             >
-                STEP 01 — IDENTITY
+                STEP 01 - IDENTITY
             </motion.span>
 
             <motion.h2
@@ -121,7 +121,7 @@ function Step2() {
                 animate={{ opacity: 1, y: 0 }}
                 className="text-label text-cobalt block mb-8"
             >
-                STEP 02 — AESTHETIC
+                STEP 02 - AESTHETIC
             </motion.span>
 
             <motion.h2
@@ -208,12 +208,21 @@ function Step2() {
 
 // Step 3: Domain Check
 function Step3() {
-    const { domain, setDomain, domainStatus, checkDomain } = useWizardStore();
+    const { domain, setDomain, domainStatus, checkDomain, domainSuggestions } = useWizardStore();
 
     const handleCheck = () => {
         if (domain.trim().length >= 3) {
             checkDomain(domain);
         }
+    };
+
+    const handleSelectSuggestion = (suggestion: string) => {
+        // Extract domain name without TLD for input
+        const parts = suggestion.split('.');
+        const name = parts[0];
+        setDomain(suggestion); // Keep full domain with TLD
+        // Mark as available since AI suggested it
+        useWizardStore.setState({ domainStatus: 'available' });
     };
 
     const getStatusIcon = () => {
@@ -236,7 +245,7 @@ function Step3() {
                 animate={{ opacity: 1, y: 0 }}
                 className="text-label text-cobalt block mb-8"
             >
-                STEP 03 — DOMAIN
+                STEP 03 - DOMAIN
             </motion.span>
 
             <motion.h2
@@ -271,7 +280,7 @@ function Step3() {
                         <span className="text-ash">check</span>
                         <input
                             type="text"
-                            value={domain}
+                            value={domain.includes('.') ? domain.split('.')[0] : domain}
                             onChange={(e) => setDomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
                             onKeyPress={(e) => e.key === 'Enter' && handleCheck()}
                             placeholder="yourdomain"
@@ -309,15 +318,44 @@ function Step3() {
                                     )}
                                     {domainStatus === 'available' && (
                                         <span className="text-green-400">
-                                            ✓ {domain}.com is available!
+                                            ✓ {domain.includes('.') ? domain : `${domain}.com`} is available!
                                         </span>
                                     )}
                                     {domainStatus === 'taken' && (
                                         <span className="text-red-400">
-                                            ✗ {domain}.com is already taken. Try another.
+                                            ✗ {domain}.com is already taken.
                                         </span>
                                     )}
                                 </div>
+
+                                {/* AI Suggestions */}
+                                {domainStatus === 'taken' && domainSuggestions.length > 0 && (
+                                    <motion.div
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: 'auto' }}
+                                        className="mt-4 pt-4 border-t border-steel"
+                                    >
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <Sparkles size={14} className="text-cobalt" />
+                                            <span className="text-cobalt text-xs font-bold">SCOUT AI SUGGESTS</span>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {domainSuggestions.map((suggestion, i) => (
+                                                <motion.button
+                                                    key={suggestion}
+                                                    initial={{ opacity: 0, scale: 0.9 }}
+                                                    animate={{ opacity: 1, scale: 1 }}
+                                                    transition={{ delay: i * 0.1 }}
+                                                    onClick={() => handleSelectSuggestion(suggestion)}
+                                                    className="px-3 py-2 border border-cobalt/50 hover:border-cobalt 
+                                                        hover:bg-cobalt/10 text-bone text-sm transition-all"
+                                                >
+                                                    {suggestion}
+                                                </motion.button>
+                                            ))}
+                                        </div>
+                                    </motion.div>
+                                )}
                             </motion.div>
                         )}
                     </AnimatePresence>
@@ -331,6 +369,7 @@ function Step3() {
         </div>
     );
 }
+
 
 // Main Wizard Component
 export default function WizardPage() {
@@ -362,10 +401,11 @@ export default function WizardPage() {
             const { data: { user } } = await supabase.auth.getUser();
 
             if (user) {
-                // Save project to Python backend
+                // Save project to Python backend (AI generates quote)
                 const projectId = await saveProject(user.id);
                 if (projectId) {
-                    router.push('/proposal');
+                    // Redirect to dynamic proposal page with project ID
+                    router.push(`/proposal/${projectId}`);
                 }
             } else {
                 // Redirect to login if not authenticated
@@ -468,8 +508,8 @@ export default function WizardPage() {
                     >
                         {saveStatus === 'saving' ? (
                             <>
-                                <Loader2 size={16} className="animate-spin" />
-                                SAVING...
+                                <Sparkles size={16} className="animate-pulse" />
+                                SCOUT AI ANALYZING...
                             </>
                         ) : currentStep === 3 ? (
                             <>
