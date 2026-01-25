@@ -32,6 +32,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
+        suppressHydrationWarning
         className={`${jetbrainsMono.variable} ${syne.variable} antialiased bg-void text-bone min-h-screen`}
       >
         {/* Noise Overlay */}

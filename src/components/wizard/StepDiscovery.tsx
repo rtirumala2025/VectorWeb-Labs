@@ -48,16 +48,16 @@ export function StepDiscovery() {
                 <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="w-full max-w-lg bg-carbon/60 border border-green-500/30 p-12 text-center rounded-lg relative overflow-hidden"
+                    className="w-full bg-carbon/60 border border-green-500/30 p-12 text-center rounded-lg relative overflow-hidden shadow-2xl backdrop-blur-sm"
                 >
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-green-500 to-transparent opacity-50" />
 
-                    <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-8 border border-green-500/50">
+                    <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-8 border border-green-500/50 shadow-[0_0_15px_rgba(34,197,94,0.3)]">
                         <Terminal size={40} className="text-green-500" />
                     </div>
 
-                    <h2 className="text-3xl font-display text-green-400 mb-4">DISCOVERY COMPLETE</h2>
-                    <p className="text-ash font-mono text-sm mb-8">
+                    <h2 className="text-4xl font-display text-green-400 mb-6 tracking-wide text-shadow-glow">DISCOVERY COMPLETE</h2>
+                    <p className="text-ash font-mono text-base mb-10 leading-relaxed">
                         Protocol finished. 10/10 vectors analyzed.<br />
                         System is ready for visual style selection.
                     </p>
