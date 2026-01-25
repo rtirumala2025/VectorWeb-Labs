@@ -68,6 +68,7 @@ export interface DiscoveryResponseNext {
     question: string;
     options: string[];
     allow_multiple?: boolean;
+    is_complete?: boolean;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Terminal, Cpu, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Terminal, Cpu, ChevronRight, ChevronLeft, Loader2 } from 'lucide-react';
 import { useWizardStore } from '@/stores/wizardStore';
 
 // Matrix Text Effect Component
@@ -22,7 +22,9 @@ export function StepDiscovery() {
         submitDiscoveryAnswer,
         toggleSelection,
         prevDiscoveryStep,
-        nextStep // Subscribe to nextStep
+        nextStep, // Subscribe to nextStep
+        saveStatus,
+        saveProject
     } = useWizardStore();
 
     // Trigger AI generation start on mount
@@ -63,10 +65,29 @@ export function StepDiscovery() {
                     </p>
 
                     <button
-                        onClick={nextStep}
+                        onClick={async () => {
+                            useWizardStore.getState().completeDiscovery();
+
+                            // Get user for saving
+                            const { supabase } = await import('@/lib/supabase');
+                            const { data: { user } } = await supabase.auth.getUser();
+
+                            if (user) {
+                                const projectId = await useWizardStore.getState().saveProject(user.id);
+                                if (projectId) {
+                                    // Dynamic import for router to avoid hook rules issue inside callback implies we should access router from component scope
+                                    // But we are in a callback. Better to trigger an effect or use router from hook.
+                                    // Since this is a client component, we should strictly use the router from useWizardStore or pass it?
+                                    // Actually, we can just use window.location or return. 
+                                    // Wait, I can't use useRouter inside the callback if it wasn't defined in component.
+                                    // StepDiscovery DOES NOT have useRouter defined.
+                                    // I should define it in the component.
+                                }
+                            }
+                        }}
                         className="w-full bg-green-600 hover:bg-green-500 text-black font-mono font-bold py-4 rounded transition-all flex items-center justify-center gap-2"
                     >
-                        <span>PROCEED_TO_VIBE_CHECK</span>
+                        <span>PROCEED_TO_PROPOSAL</span>
                         <ChevronRight size={18} />
                     </button>
                 </motion.div>

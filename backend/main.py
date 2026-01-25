@@ -115,6 +115,7 @@ class DiscoveryResponseNext(BaseModel):
     question: str
     options: list[str]
     allow_multiple: bool = False
+    is_complete: bool = False
 
 
 
@@ -130,7 +131,17 @@ async def create_project(project: ProjectCreate):
     quote_data = ai.generate_quote(project.dict())
 
     # 3. Update DB with Quote
-    updated_project = db.update_project_quote(project_id, quote_data)
+    # 3. Update DB with Quote (Explicit Mapping)
+    # STRICT MAPPING PROTOCOL
+    db_update_payload = {
+        "ai_price_quote": quote_data.get("price", 0),
+        "ai_features": quote_data.get("features", []),
+        "ai_reasoning": quote_data.get("reasoning", ""),
+        "ai_suggested_stack": quote_data.get("suggested_stack", ""),
+        "ai_risks": quote_data.get("risks", []),
+        "discovery_notes": project.project_scope or {} 
+    }
+    updated_project = db.update_project(project_id, db_update_payload)
 
     return updated_project
 

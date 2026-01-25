@@ -57,6 +57,7 @@ interface WizardState {
     // Discovery Actions
     startDiscovery: () => Promise<void>;
     submitDiscoveryAnswer: (answer?: string) => Promise<void>;
+    completeDiscovery: () => void;
     toggleSelection: (option: string) => void;
     prevDiscoveryStep: () => void;
 }
@@ -184,6 +185,17 @@ export const useWizardStore = create<WizardState>((set, get) => ({
         set({ isGeneratingDiscovery: true });
         try {
             const response = await apiClient.generateDiscoveryNext(businessName, 'modern web', 0, []);
+
+            if (response.is_complete) {
+                set({
+                    currentQuestion: null,
+                    isGeneratingDiscovery: false,
+                    currentSelections: [],
+                    isDiscoveryComplete: true
+                });
+                return;
+            }
+
             set({
                 currentQuestion: {
                     text: response.question,
@@ -283,6 +295,19 @@ export const useWizardStore = create<WizardState>((set, get) => ({
 
         try {
             const response = await apiClient.generateDiscoveryNext(businessName, 'modern web', nextStep, newHistory);
+
+            // Check for backend completion signal
+            if (response.is_complete) {
+                set({
+                    discoveryHistory: newHistory,
+                    currentDiscoveryStep: nextStep,
+                    currentQuestion: null,
+                    isDiscoveryComplete: true,
+                    currentSelections: []
+                });
+                return;
+            }
+
             set({
                 currentQuestion: {
                     text: response.question,
@@ -295,7 +320,9 @@ export const useWizardStore = create<WizardState>((set, get) => ({
             console.error('Failed to get next question:', error);
             set({ isGeneratingDiscovery: false, isDiscoveryComplete: true });
         }
-    }
+    },
+
+    completeDiscovery: () => set({ isDiscoveryComplete: true }),
 }));
 
 // Pre-filled mock data for demo
