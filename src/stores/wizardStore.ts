@@ -24,6 +24,11 @@ interface WizardState {
     projectId: string | null;
     aiQuote: AIQuote | null;
 
+    // Discovery Step
+    discoveryQuestion: string | null;
+    discoveryAnswer: string;
+    isGeneratingDiscovery: boolean;
+
     // Actions
     setStep: (step: number) => void;
     nextStep: () => void;
@@ -45,6 +50,10 @@ interface WizardState {
 
     // Check if can proceed
     canProceed: () => boolean;
+
+    // Discovery Actions
+    generateDiscoveryQuestion: () => Promise<void>;
+    setDiscoveryAnswer: (answer: string) => void;
 }
 
 const initialState = {
@@ -58,6 +67,9 @@ const initialState = {
     saveError: null as string | null,
     projectId: null as string | null,
     aiQuote: null as AIQuote | null,
+    discoveryQuestion: null as string | null,
+    discoveryAnswer: '',
+    isGeneratingDiscovery: false,
 };
 
 export const useWizardStore = create<WizardState>((set, get) => ({
@@ -67,7 +79,7 @@ export const useWizardStore = create<WizardState>((set, get) => ({
 
     nextStep: () => {
         const { currentStep, canProceed } = get();
-        if (canProceed() && currentStep < 3) {
+        if (canProceed() && currentStep < 4) {
             set({ currentStep: currentStep + 1 });
         }
     },
@@ -148,17 +160,40 @@ export const useWizardStore = create<WizardState>((set, get) => ({
     reset: () => set(initialState),
 
     canProceed: () => {
-        const { currentStep, businessName, selectedVibe, domainStatus } = get();
+        const { currentStep, businessName, discoveryAnswer, selectedVibe, domainStatus } = get();
 
         switch (currentStep) {
-            case 1:
+            case 1: // Identity
                 return businessName.trim().length >= 2;
-            case 2:
+            case 2: // Discovery
+                // Optional or mandatory? Let's make it mandatory but simple
+                return true;
+            case 3: // Vibe
                 return selectedVibe !== null;
-            case 3:
+            case 4: // Domain
                 return domainStatus === 'available';
             default:
                 return false;
+        }
+    },
+
+    setDiscoveryAnswer: (answer) => set({ discoveryAnswer: answer }),
+
+    generateDiscoveryQuestion: async () => {
+        const { businessName, isGeneratingDiscovery, discoveryQuestion } = get();
+        if (isGeneratingDiscovery || discoveryQuestion) return;
+
+        set({ isGeneratingDiscovery: true });
+        try {
+            // Use 'modern' as default industry/vibe if not set yet, or infer from name
+            const response = await apiClient.generateDiscovery(businessName, 'modern web presence');
+            set({ discoveryQuestion: response.question, isGeneratingDiscovery: false });
+        } catch (error) {
+            console.error('Discovery generation failed:', error);
+            set({
+                discoveryQuestion: "What are the primary goals for your new website?",
+                isGeneratingDiscovery: false
+            });
         }
     },
 }));

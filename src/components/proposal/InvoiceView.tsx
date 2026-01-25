@@ -1,6 +1,7 @@
 'use client';
 
 import { Project } from '@/lib/api';
+import { CreditCard, Scan, ArrowRight } from 'lucide-react';
 
 interface InvoiceViewProps {
     project: Project;
@@ -10,19 +11,19 @@ export function InvoiceView({ project }: InvoiceViewProps) {
     const today = new Date();
     const issueDate = today.toLocaleDateString('en-US', {
         year: 'numeric',
-        month: 'long',
+        month: 'numeric',
         day: 'numeric'
     });
 
     // Due date is 14 days from today
     const dueDate = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', {
         year: 'numeric',
-        month: 'long',
+        month: 'numeric',
         day: 'numeric'
     });
 
     // Extract data from project
-    const invoiceNumber = project.id.slice(0, 6).toUpperCase();
+    const invoiceNumber = project.id.slice(0, 8).toUpperCase();
     const totalPrice = project.ai_price_quote?.price || 1200;
     const basePrice = 500;
     const customFeaturesPrice = totalPrice - basePrice;
@@ -30,136 +31,157 @@ export function InvoiceView({ project }: InvoiceViewProps) {
     // Services table data
     const services = [
         {
-            description: 'Website Design – Base Package',
+            id: 'SVC-001',
+            description: 'Core_Architecture_Setup',
+            detail: 'Next.js + Tailwind + DB Init',
             quantity: 1,
             rate: basePrice,
             total: basePrice
         },
         {
-            description: 'AI Logic & Custom Features',
+            id: 'SVC-002',
+            description: 'AI_Logic_Integration',
+            detail: 'Custom features & API connections',
             quantity: 1,
             rate: customFeaturesPrice,
             total: customFeaturesPrice
         },
         {
-            description: 'Maintenance Setup',
+            id: 'SVC-003',
+            description: 'Security_Layer_V1',
+            detail: 'Basic auth & safe headers',
             quantity: 1,
             rate: 0,
             total: 0,
-            note: 'Included'
+            note: 'INCLUDED'
         }
     ];
 
     return (
-        <div className="bg-white text-void p-8 md:p-12 font-sans">
-            {/* Header */}
-            <div className="flex items-start justify-between mb-12 pb-6 border-b-2 border-void">
+        <div className="bg-void text-bone font-mono text-sm border border-steel relative">
+            {/* Invoice Header */}
+            <div className="p-8 border-b border-steel flex flex-col md:flex-row justify-between md:items-start gap-6">
                 <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-void mb-2">
-                        VectorWeb Labs Invoice
-                    </h1>
-                    <p className="text-sm text-gray-600">Professional Web Development Services</p>
+                    <div className="flex items-center gap-3 mb-2">
+                        <Scan size={24} className="text-cobalt" />
+                        <h1 className="text-2xl font-bold tracking-tight">INVOICE_{invoiceNumber}</h1>
+                    </div>
+                    <p className="text-ash text-xs uppercase tracking-wider">VECTORWEB_LABS FINANCIAL DEPT.</p>
                 </div>
                 <div className="text-right">
-                    {/* Logo Placeholder */}
-                    <div className="w-16 h-16 bg-cobalt flex items-center justify-center text-white font-bold text-xl">
-                        VW
+                    <div className="inline-block border border-red-500/50 text-red-400 px-3 py-1 text-xs mb-2">
+                        PAYMENT_STATUS: PENDING
+                    </div>
+                    <p className="text-xs text-ash">DUE_DATE: <span className="text-bone">{dueDate}</span></p>
+                </div>
+            </div>
+
+            {/* Client Info Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 border-b border-steel">
+                <div className="p-6 border-r border-steel md:border-r-0 lg:border-r">
+                    <span className="text-xs text-ash uppercase tracking-wider block mb-2">BILL_TO</span>
+                    <strong className="block text-lg mb-1">{project.business_name}</strong>
+                    <span className="block text-ash">{project.domain_choice}</span>
+                </div>
+                <div className="p-6 bg-carbon/20 flex flex-col justify-center">
+                    <div className="flex justify-between mb-2">
+                        <span className="text-ash">ISSUE_DATE</span>
+                        <span>{issueDate}</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-ash">REF_ID</span>
+                        <span>{project.id.slice(0, 12)}...</span>
                     </div>
                 </div>
             </div>
 
-            {/* Invoice Info */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                <div>
-                    <span className="text-xs text-gray-500 uppercase tracking-wider block mb-1">Invoice Number</span>
-                    <span className="font-mono font-bold text-lg">{invoiceNumber}</span>
-                </div>
-                <div>
-                    <span className="text-xs text-gray-500 uppercase tracking-wider block mb-1">Issue Date</span>
-                    <span className="font-mono">{issueDate}</span>
-                </div>
-                <div>
-                    <span className="text-xs text-gray-500 uppercase tracking-wider block mb-1">Due Date</span>
-                    <span className="font-mono text-red-600 font-bold">{dueDate}</span>
-                </div>
-            </div>
-
-            {/* Bill To */}
-            <div className="mb-12">
-                <span className="text-xs text-gray-500 uppercase tracking-wider block mb-2">Bill To</span>
-                <p className="font-bold text-lg">{project.business_name}</p>
-                <p className="text-gray-600">{project.domain_choice}</p>
-            </div>
-
-            {/* Services Table */}
-            <div className="mb-12">
-                <table className="w-full border-collapse">
+            {/* Line Items */}
+            <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
                     <thead>
-                        <tr className="border-b-2 border-void">
-                            <th className="text-left py-3 text-xs uppercase tracking-wider text-gray-500">Description</th>
-                            <th className="text-center py-3 text-xs uppercase tracking-wider text-gray-500 w-20">Qty</th>
-                            <th className="text-right py-3 text-xs uppercase tracking-wider text-gray-500 w-28">Rate</th>
-                            <th className="text-right py-3 text-xs uppercase tracking-wider text-gray-500 w-28">Total</th>
+                        <tr className="bg-carbon border-b border-steel text-xs uppercase text-ash">
+                            <th className="p-4 font-normal w-24">ID</th>
+                            <th className="p-4 font-normal">DESCRIPTION</th>
+                            <th className="p-4 font-normal text-right">QTY</th>
+                            <th className="p-4 font-normal text-right">RATE</th>
+                            <th className="p-4 font-normal text-right">TOTAL</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {services.map((service, index) => (
-                            <tr key={index} className="border-b border-gray-200">
-                                <td className="py-4">
-                                    <span className="font-medium">{service.description}</span>
+                    <tbody className="divide-y divide-steel/30">
+                        {services.map((service) => (
+                            <tr key={service.id} className="group hover:bg-carbon/10 transition-colors">
+                                <td className="p-4 text-ash group-hover:text-cobalt transition-colors">{service.id}</td>
+                                <td className="p-4">
+                                    <div className="font-bold">{service.description}</div>
+                                    <div className="text-xs text-ash mt-0.5">{service.detail}</div>
                                 </td>
-                                <td className="py-4 text-center font-mono">{service.quantity}</td>
-                                <td className="py-4 text-right font-mono">
+                                <td className="p-4 text-right">{service.quantity}</td>
+                                <td className="p-4 text-right text-ash">
                                     {service.note ? (
-                                        <span className="text-green-600">${service.rate} ({service.note})</span>
+                                        <span className="text-green-400">{service.note}</span>
                                     ) : (
                                         `$${service.rate}`
                                     )}
                                 </td>
-                                <td className="py-4 text-right font-mono font-bold">${service.total}</td>
+                                <td className="p-4 text-right font-bold">${service.total}</td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
             </div>
 
-            {/* Totals */}
-            <div className="flex justify-end mb-12">
-                <div className="w-64">
-                    <div className="flex justify-between py-2 border-b border-gray-200">
-                        <span className="text-gray-600">Subtotal</span>
-                        <span className="font-mono">${totalPrice}</span>
+            {/* Total Section */}
+            <div className="border-t border-steel bg-carbon/10 p-6 flex justify-end">
+                <div className="w-64 space-y-3">
+                    <div className="flex justify-between text-ash text-xs">
+                        <span>SUBTOTAL</span>
+                        <span>${totalPrice}</span>
                     </div>
-                    <div className="flex justify-between py-4 border-b-2 border-void">
-                        <span className="font-bold text-lg">TOTAL DUE</span>
-                        <span className="font-mono font-bold text-lg text-cobalt">${totalPrice}</span>
+                    <div className="flex justify-between text-ash text-xs">
+                        <span>TAX (0%)</span>
+                        <span>$0.00</span>
+                    </div>
+                    <div className="border-t border-steel pt-3 flex justify-between items-baseline">
+                        <span className="font-bold text-lg">TOTAL_DUE</span>
+                        <span className="font-bold text-2xl text-cobalt">${totalPrice}</span>
                     </div>
                 </div>
             </div>
 
             {/* Payment Methods */}
-            <div className="bg-gray-50 border border-gray-200 p-6">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500 mb-4">Payment Methods</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <span className="text-xs text-gray-500 block mb-1">PayPal</span>
-                        <span className="font-mono text-sm text-cobalt">paypal.me/vectorweblabs</span>
-                    </div>
-                    <div>
-                        <span className="text-xs text-gray-500 block mb-1">Venmo</span>
-                        <span className="font-mono text-sm text-cobalt">@VectorWebLabs</span>
-                    </div>
-                    <div>
-                        <span className="text-xs text-gray-500 block mb-1">Cash App</span>
-                        <span className="font-mono text-sm text-cobalt">$VectorWebLabs</span>
+            <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-steel">
+                <div>
+                    <h3 className="text-xs uppercase text-ash tracking-widest mb-4">PAYMENT_CHANNELS</h3>
+                    <div className="space-y-3 text-xs">
+                        <div className="flex items-center gap-3 p-3 border border-steel bg-carbon/30 hover:border-cobalt transition-colors cursor-pointer group">
+                            <CreditCard size={16} className="text-ash group-hover:text-cobalt" />
+                            <div className="flex-1">
+                                <strong className="block text-bone">STRIPE / CARD</strong>
+                                <span className="text-ash">Secure instant transfer</span>
+                            </div>
+                            <ArrowRight size={14} className="text-ash group-hover:translate-x-1 transition-transform" />
+                        </div>
+                        <div className="flex items-center gap-3 p-3 border border-steel bg-carbon/30 hover:border-cobalt transition-colors cursor-pointer group">
+                            <span className="font-bold text-ash group-hover:text-cobalt">₿</span>
+                            <div className="flex-1">
+                                <strong className="block text-bone">CRYPTO</strong>
+                                <span className="text-ash">BTC / ETH / SOL accepted</span>
+                            </div>
+                            <ArrowRight size={14} className="text-ash group-hover:translate-x-1 transition-transform" />
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Footer */}
-            <div className="mt-12 pt-6 border-t border-gray-200 text-center text-xs text-gray-500">
-                <p>Thank you for your business!</p>
-                <p className="mt-1">VectorWeb Labs • vectorweblabs.com • hello@vectorweblabs.com</p>
+                <div className="text-xs text-ash leading-relaxed">
+                    <h3 className="uppercase tracking-widest mb-2 text-ash">TERMS_&_CONDITIONS</h3>
+                    <p>
+                        Payment due within 14 days of issue. Late payments subject to 5% compounding interest per month.
+                        Digital assets released upon full settlement of balance.
+                    </p>
+                    <p className="mt-4 font-mono text-cobalt">
+                        &gt; END_OF_TRANSMISSION
+                    </p>
+                </div>
             </div>
         </div>
     );

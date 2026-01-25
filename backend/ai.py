@@ -204,3 +204,37 @@ Return ONLY a JSON list of strings, no other text."""
             f"{base}lab.co",
             f"get{base}.com"
         ]
+
+
+def generate_discovery_question(business_name: str, industry: str) -> str:
+    """
+    Generate a high-value technical discovery question for the business.
+    
+    Args:
+        business_name: The name of the client's business.
+        industry: The industry/vibe (e.g., "modern", "restaurant", "tech").
+    
+    Returns:
+        str: A single technical question.
+    """
+    if not client:
+        return "What are the primary goals for your new website?"
+
+    system_prompt = """Role: Senior Technical Architect at a high-end web agency.
+Goal: Ask ONE high-impact technical question to scope the project correctly.
+Style: Professional, direct, slightly technical but accessible.
+Output: Return ONLY the question string. No quotes, no intro."""
+
+    user_prompt = f"""Client: {business_name}
+Industry/Vibe: {industry}
+
+Generate one specific question to determine if they need complex features (e.g. CMS, E-commerce, Auth) or just a static site.
+Example: "Will you need a customer login portal or just a contact form?"
+Question:"""
+
+    try:
+        response = _call_openrouter(system_prompt, user_prompt)
+        return response.strip().replace('"', '')
+    except Exception as e:
+        print(f"Discovery question generation error: {e}")
+        return "Will you need e-commerce functionality or just a portfolio display?"

@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowRight, Sparkles, Crown, Zap, Check, Terminal, Loader2, 
 import { useWizardStore, mockWizardData, VibeType } from '@/stores/wizardStore';
 import { Button } from '@/components/ui/Button';
 import { GridBackground } from '@/components/backgrounds/GridBackground';
+import { StepDiscovery } from '@/components/wizard/StepDiscovery';
 
 // Vibe card data
 const vibes = [
@@ -121,7 +122,7 @@ function Step2() {
                 animate={{ opacity: 1, y: 0 }}
                 className="text-label text-cobalt block mb-8"
             >
-                STEP 02 - AESTHETIC
+                STEP 03 — AESTHETIC
             </motion.span>
 
             <motion.h2
@@ -245,7 +246,7 @@ function Step3() {
                 animate={{ opacity: 1, y: 0 }}
                 className="text-label text-cobalt block mb-8"
             >
-                STEP 03 - DOMAIN
+                STEP 04 — DOMAIN
             </motion.span>
 
             <motion.h2
@@ -395,7 +396,7 @@ export default function WizardPage() {
     }, [setBusinessName, setVibe, setDomain]);
 
     const handleNext = async () => {
-        if (currentStep === 3 && canProceed()) {
+        if (currentStep === 4 && canProceed()) {
             // Import supabase client to get user
             const { supabase } = await import('@/lib/supabase');
             const { data: { user } } = await supabase.auth.getUser();
@@ -418,6 +419,7 @@ export default function WizardPage() {
 
     const steps = [
         { component: Step1 },
+        { component: StepDiscovery },
         { component: Step2 },
         { component: Step3 },
     ];
@@ -434,7 +436,7 @@ export default function WizardPage() {
                     <motion.div
                         className="h-full bg-cobalt"
                         initial={{ width: 0 }}
-                        animate={{ width: `${(currentStep / 3) * 100}%` }}
+                        animate={{ width: `${(currentStep / 4) * 100}%` }}
                         transition={{ duration: 0.5 }}
                     />
                 </div>
@@ -442,7 +444,7 @@ export default function WizardPage() {
 
             {/* Step Indicators */}
             <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4">
-                {[1, 2, 3].map((step) => (
+                {[1, 2, 3, 4].map((step) => (
                     <button
                         key={step}
                         onClick={() => setStep(step)}
@@ -511,7 +513,7 @@ export default function WizardPage() {
                                 <Sparkles size={16} className="animate-pulse" />
                                 SCOUT AI ANALYZING...
                             </>
-                        ) : currentStep === 3 ? (
+                        ) : currentStep === 4 ? (
                             <>
                                 GENERATE PROPOSAL
                                 <ArrowRight size={16} />
@@ -528,7 +530,7 @@ export default function WizardPage() {
 
             {/* Cannot Proceed Warning */}
             <AnimatePresence>
-                {!canProceed() && currentStep === 3 && (
+                {!canProceed() && currentStep === 4 && (
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}

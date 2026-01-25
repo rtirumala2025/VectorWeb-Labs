@@ -99,9 +99,18 @@ class DomainCheckRequest(BaseModel):
 class DomainCheckResponse(BaseModel):
     """Response model for domain check."""
     available: bool
-    domain: str
     suggestions: list[str] = []
-    warning: Optional[str] = None
+
+
+class DiscoveryRequest(BaseModel):
+    """Input model for discovery question generation."""
+    business_name: str
+    industry: str
+
+
+class DiscoveryResponse(BaseModel):
+    """Response model for discovery question."""
+    question: str
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -187,6 +196,13 @@ async def create_project(project: ProjectCreate):
         status="success",
         ai_quote=ai_quote
     )
+
+
+@app.post("/api/discovery", response_model=DiscoveryResponse)
+async def generate_discovery(request: DiscoveryRequest):
+    """Generate a technical discovery question."""
+    question = ai.generate_discovery_question(request.business_name, request.industry)
+    return DiscoveryResponse(question=question)
 
 
 @app.post("/api/projects/{project_id}/pay")

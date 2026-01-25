@@ -60,6 +60,10 @@ interface ApiError {
     detail: string;
 }
 
+export interface DiscoveryResponse {
+    question: string;
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // API CLIENT
 // ══════════════════════════════════════════════════════════════════════════════
@@ -114,6 +118,13 @@ class ApiClient {
         return this.request('/api/check-domain', {
             method: 'POST',
             body: JSON.stringify({ domain, vibe }),
+        });
+    }
+
+    async generateDiscovery(businessName: string, industry: string): Promise<DiscoveryResponse> {
+        return this.request('/api/discovery', {
+            method: 'POST',
+            body: JSON.stringify({ business_name: businessName, industry }),
         });
     }
 
