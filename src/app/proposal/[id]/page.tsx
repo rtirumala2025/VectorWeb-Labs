@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { GridBackground } from '@/components/backgrounds/GridBackground';
 import { apiClient, Project } from '@/lib/api';
-import { ContractView, InvoiceView } from '@/components/proposal';
+import { ContractView, InvoiceView, AnalysisCard } from '@/components/proposal';
 import Link from 'next/link';
 
 type DocumentTab = 'summary' | 'contract' | 'invoice';
@@ -265,6 +265,15 @@ and initiates the design phase. Given current demand, estimated delivery is 10-1
                         Review your project details and sign to proceed.
                     </p>
                 </motion.div>
+
+                {/* AI Analysis Card */}
+                {project && (
+                    <AnalysisCard
+                        businessName={project.business_name}
+                        reasoning={project.ai_price_quote?.reasoning || ''}
+                        risks={project.ai_price_quote?.risks}
+                    />
+                )}
 
                 {/* Document Tabs */}
                 <motion.div
