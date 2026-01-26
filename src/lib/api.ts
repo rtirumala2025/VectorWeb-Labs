@@ -2,6 +2,8 @@
  * API Client for VectorWeb Labs Python Backend
  */
 
+import { supabase } from '@/lib/supabase';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002';
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -17,6 +19,7 @@ export interface ProjectCreateData {
     website_type?: string;
     target_audience?: string;
     project_scope?: Record<string, unknown>;
+    wizard_data?: Record<string, unknown>;
 }
 
 export interface AIQuote {
@@ -103,12 +106,21 @@ class ApiClient {
     ): Promise<T> {
         const url = `${this.baseUrl}${endpoint}`;
 
+        // Get current session token
+        const { data: { session } } = await supabase.auth.getSession();
+
+        const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+            ...options.headers as Record<string, string>,
+        };
+
+        if (session?.access_token) {
+            headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
+
         const config: RequestInit = {
             ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers,
-            },
+            headers,
             credentials: 'include',
         };
 
@@ -194,6 +206,12 @@ class ApiClient {
 
     async payProject(projectId: string): Promise<{ status: string }> {
         return this.request(`/api/projects/${projectId}/pay`, {
+            method: 'POST',
+        });
+    }
+
+    async finalizeProject(projectId: string): Promise<Project> {
+        return this.request(`/api/projects/${projectId}/finalize`, {
             method: 'POST',
         });
     }

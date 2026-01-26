@@ -24,7 +24,8 @@ export function StepDiscovery() {
         prevDiscoveryStep,
         nextStep, // Subscribe to nextStep
         saveStatus,
-        saveProject
+        saveProject,
+        discoveryError
     } = useWizardStore();
 
     // Trigger AI generation start on mount
@@ -65,29 +66,10 @@ export function StepDiscovery() {
                     </p>
 
                     <button
-                        onClick={async () => {
-                            useWizardStore.getState().completeDiscovery();
-
-                            // Get user for saving
-                            const { supabase } = await import('@/lib/supabase');
-                            const { data: { user } } = await supabase.auth.getUser();
-
-                            if (user) {
-                                const projectId = await useWizardStore.getState().saveProject(user.id);
-                                if (projectId) {
-                                    // Dynamic import for router to avoid hook rules issue inside callback implies we should access router from component scope
-                                    // But we are in a callback. Better to trigger an effect or use router from hook.
-                                    // Since this is a client component, we should strictly use the router from useWizardStore or pass it?
-                                    // Actually, we can just use window.location or return. 
-                                    // Wait, I can't use useRouter inside the callback if it wasn't defined in component.
-                                    // StepDiscovery DOES NOT have useRouter defined.
-                                    // I should define it in the component.
-                                }
-                            }
-                        }}
+                        onClick={nextStep}
                         className="w-full bg-green-600 hover:bg-green-500 text-black font-mono font-bold py-4 rounded transition-all flex items-center justify-center gap-2"
                     >
-                        <span>PROCEED_TO_PROPOSAL</span>
+                        <span>PROCEED_TO_AESTHETIC</span>
                         <ChevronRight size={18} />
                     </button>
                 </motion.div>
@@ -146,6 +128,25 @@ export function StepDiscovery() {
                             <p className="font-mono text-xs text-cobalt">
                                 <MatrixText text={`PROCESSING DATA FOR ${businessName.toUpperCase()}...`} />
                             </p>
+                        </motion.div>
+                    ) : discoveryError ? (
+                        <motion.div
+                            key="error"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="absolute inset-0 flex flex-col items-center justify-center text-center p-6"
+                        >
+                            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-6 border border-red-500/30">
+                                <Terminal size={32} className="text-red-500" />
+                            </div>
+                            <h3 className="font-display text-xl text-bone mb-2">CONNECTION INTERRUPTED</h3>
+                            <p className="font-mono text-sm text-red-400 mb-8">{discoveryError}</p>
+                            <button
+                                onClick={() => startDiscovery()}
+                                className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-mono font-bold rounded transition-colors"
+                            >
+                                RETRY_CONNECTION
+                            </button>
                         </motion.div>
                     ) : (
                         <motion.div

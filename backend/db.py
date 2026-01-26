@@ -63,6 +63,8 @@ def create_project(data: dict) -> str:
             project_data["target_audience"] = data["target_audience"]
         if data.get("project_scope"):
             project_data["project_scope"] = data["project_scope"]
+        if data.get("wizard_data"):
+            project_data["wizard_data"] = data["wizard_data"]
         
         # Insert into Supabase
         result = supabase.table("projects").insert(project_data).execute()

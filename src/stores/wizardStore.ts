@@ -25,6 +25,7 @@ interface WizardState {
     aiQuote: AIQuote | null;
 
     // Discovery Step (Adaptive Gauntlet)
+    discoveryError: string | null;
     discoveryHistory: Array<{ q: string; a: string }>;
     currentDiscoveryStep: number; // 0-9
     currentQuestion: { text: string; options: string[]; allow_multiple?: boolean } | null;
@@ -80,6 +81,7 @@ const initialState = {
     aiQuote: null as AIQuote | null,
 
     // and...
+    discoveryError: null,
     discoveryHistory: [],
     currentDiscoveryStep: 0,
     currentQuestion: null,
@@ -149,7 +151,11 @@ export const useWizardStore = create<WizardState>((set, get) => ({
                 vibe_style: selectedVibe,
                 user_id: userId,
                 domain_choice: domain.includes('.') ? domain : domain + '.com',
-                project_scope: { discovery: discoveryHistory }
+                project_scope: { discovery: discoveryHistory },
+                wizard_data: {
+                    discoveryHistory,
+                    currentDiscoveryStep: 10 // Mark as complete
+                }
             });
 
             set({
@@ -183,11 +189,15 @@ export const useWizardStore = create<WizardState>((set, get) => ({
         }
     },
 
+
+
+    // ... (existing)
+
     startDiscovery: async () => {
         const { businessName, currentDiscoveryStep, currentQuestion, isGeneratingDiscovery } = get();
         if (currentQuestion || isGeneratingDiscovery || currentDiscoveryStep > 0) return;
 
-        set({ isGeneratingDiscovery: true });
+        set({ isGeneratingDiscovery: true, discoveryError: null });
         try {
             const response = await apiClient.generateDiscoveryNext(businessName, 'modern web', 0, []);
 
@@ -212,7 +222,7 @@ export const useWizardStore = create<WizardState>((set, get) => ({
             });
         } catch (error) {
             console.error(error);
-            set({ isGeneratingDiscovery: false });
+            set({ isGeneratingDiscovery: false, discoveryError: 'Failed to initialize discovery. Please try again.' });
         }
     },
 
@@ -383,7 +393,7 @@ export const useWizardStore = create<WizardState>((set, get) => ({
         if (!projectId) return;
         set({ saveStatus: 'saving' });
         try {
-            await apiClient.generateProjectQuote(projectId);
+            await apiClient.finalizeProject(projectId);
             set({ saveStatus: 'success' });
         } catch (error) {
             console.error('Failed to generate quote:', error);

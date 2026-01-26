@@ -122,6 +122,17 @@ def generate_quote(business_data: dict) -> dict:
             "suggested_stack": "Next.js + Tailwind CSS + Supabase"
         }
     
+    # Prioritize project_scope if explicit, otherwise use wizard_data discovery history
+    scope_content = "Standard 5-page website"
+    
+    if business_data.get('project_scope'):
+        scope_content = json.dumps(business_data.get('project_scope', {}), indent=2)
+    elif business_data.get('wizard_data') and business_data['wizard_data'].get('discoveryHistory'):
+        # Format discovery history for the AI
+        history = business_data['wizard_data']['discoveryHistory']
+        formatted_history = "\n".join([f"Q: {item['q']}\nA: {item['a']}" for item in history])
+        scope_content = f"Discovery Interview Results:\n{formatted_history}"
+
     # Build user prompt from business data
     user_prompt = f"""Generate a price quote for this project:
 
@@ -129,7 +140,7 @@ Business Name: {business_data.get('business_name', 'Unknown')}
 Website Type: {business_data.get('website_type', 'Portfolio')}
 Target Audience: {business_data.get('target_audience', 'General')}
 Design Style: {business_data.get('vibe_style', 'modern')}
-Scope: {json.dumps(business_data.get('project_scope', {}), indent=2) if business_data.get('project_scope') else 'Standard 5-page website'}
+Scope: {scope_content}
 
 Return ONLY a valid JSON object with: price, reasoning, features, risks, suggested_stack."""
 

@@ -64,7 +64,9 @@ class ProjectCreate(BaseModel):
     client_phone: Optional[str] = None
     website_type: Optional[str] = None
     target_audience: Optional[str] = None
+    target_audience: Optional[str] = None
     project_scope: Optional[dict] = None
+    wizard_data: Optional[dict] = None
 
 
 class ProjectResponseFull(BaseModel):
@@ -249,6 +251,41 @@ async def update_project(project_id: str, update: ProjectUpdate, user: Any = Dep
         raise
     except Exception as e:
         print(f"Error updating project {project_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/projects/{project_id}/finalize")
+async def finalize_project(project_id: str, user: Any = Depends(get_current_user)):
+    """
+    Finalize the wizard flow: Generate AI quote and mark as proposal ready.
+    """
+    try:
+        project = db.get_project(project_id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        if project.get("user_id") != user.id:
+             raise HTTPException(status_code=403, detail="Unauthorized")
+
+        # Generate Quote (Force Refresh)
+        quote_data = ai.generate_quote(project)
+        
+        # Update DB: Status -> proposal_ready
+        db_update_payload = {
+            "ai_price_quote": quote_data.get("price", 0),
+            "ai_features": quote_data.get("features", []),
+            "ai_reasoning": quote_data.get("reasoning", ""),
+            "ai_suggested_stack": quote_data.get("suggested_stack", ""),
+            "ai_risks": quote_data.get("risks", []),
+            "status": "proposal_ready"
+        }
+        updated = db.update_project(project_id, db_update_payload)
+        return updated
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error finalizing project {project_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

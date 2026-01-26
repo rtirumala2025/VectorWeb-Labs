@@ -391,7 +391,8 @@ export default function WizardPage() {
         projectId,
         saveStatus,
         saveStep,
-        init
+        init,
+        generateQuote
     } = useWizardStore();
 
     // Hydrate from Server
@@ -411,18 +412,24 @@ export default function WizardPage() {
     const handleNext = async () => {
         // 1. Create Draft if Step 1 and no project
         if (currentStep === 1 && !projectId) {
-            try {
-                const response = await apiClient.createDraft();
-                useWizardStore.setState({ projectId: response.project_id });
-                // URL update handled by useEffect
-            } catch (error) {
-                console.error('Failed to create draft:', error);
-                return; // Block progress
+            // Check if user is logged in first to avoid 401 console errors
+            const { supabase } = await import('@/lib/supabase');
+            const { data: { session } } = await supabase.auth.getSession();
+
+            if (session) {
+                try {
+                    const response = await apiClient.createDraft();
+                    useWizardStore.setState({ projectId: response.project_id });
+                } catch (error) {
+                    console.error('Failed to create draft:', error);
+                }
+            } else {
+                console.log('Guest user: continuing without server draft');
             }
         }
 
-        // 2. Save current progress
-        if (projectId || currentStep === 1) { // We just created it if step 1
+        // 2. Save current progress (only if we have a project)
+        if (projectId) {
             await saveStep();
         }
 
@@ -433,36 +440,20 @@ export default function WizardPage() {
             const { data: { user } } = await supabase.auth.getUser();
 
             if (user) {
-                // Final save is implicit as we've been saving incrementally
-                // But we might want to mark it as ready or something?
+                // Finalize Project:
+                // If we are in Guest Mode (no projectId), we must create it now
+                if (!projectId) {
+                    const newProjectId = await useWizardStore.getState().saveProject(user.id);
+                    if (!newProjectId) {
+                        alert('Failed to save project. Please try again.');
+                        return;
+                    }
+                }
 
-                // Existing logic called saveProject which creates a NEW project. 
-                // We want to UPDATE the existing one and perhaps mark it as "quoted"?
-                // The current saveProject creates a new one. 
-                // We should probably redirect to proposal with the CURRENT projectId.
-                // But wait, the backend `create_project` endpoint was doing the AI quote generation.
-                // We need to ensure the AI quote is generated.
+                // Generate Quote
+                await generateQuote();
 
-                // Option: Call a new endpoint to "finalize" or "quote" the project.
-                // Or: Update `saveProject` in store to be `finalizeProject`.
-
-                // For now, let's assume we redirect to proposal, and maybe proposal page generates quote if missing?
-                // OR: We trigger the AI quote generation here.
-
-                // Let's stick to the refactor plan: "Step 1... If no projectId: Call createDraft... Step 2-10... On Next: Call store.saveStep()"
-
-                // The AI quote generation was seemingly done in `createProject` in backend.
-                // We need to trigger that.
-
-                // Temporary solution: Just redirect. The proposal page might need to handle it.
-                // Checking `backend/main.py`... `create_project` does `ai.generate_quote`.
-                // `update_project` does NOT.
-
-                // So we lose the AI quote if we just use update.
-                // We should add a "finalize" or "generate_quote" endpoint.
-                // Or make `update_project` generate quote if status changes?
-
-                router.push(`/proposal/${projectId}`);
+                router.push(`/proposal/${useWizardStore.getState().projectId}`);
             } else {
                 router.push('/login');
             }

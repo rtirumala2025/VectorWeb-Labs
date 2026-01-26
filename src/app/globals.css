@@ -55,6 +55,35 @@
 
 html {
   scroll-behavior: smooth;
+  font-size: 14px; /* Mobile / Compact */
+}
+
+/* Tablet */
+@media (min-width: 640px) {
+  html {
+    font-size: 15px;
+  }
+}
+
+/* Laptop / Standard */
+@media (min-width: 1024px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+/* Large Desktop */
+@media (min-width: 1400px) {
+  html {
+    font-size: 18px;
+  }
+}
+
+/* Ultra Wide */
+@media (min-width: 1800px) {
+  html {
+    font-size: 20px;
+  }
 }
 
 body {
