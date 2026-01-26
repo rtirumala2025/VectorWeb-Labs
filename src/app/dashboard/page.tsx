@@ -1,330 +1,231 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import {
-    LayoutDashboard, FileText, Settings, LogOut,
-    ExternalLink, Bell, User, Clock, CheckCircle2, Loader2
-} from 'lucide-react';
-import Link from 'next/link';
+import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
-import { GridBackground } from '@/components/backgrounds/GridBackground';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { StatusTimeline } from '@/components/dashboard/StatusTimeline';
-import { ChatWidget } from '@/components/dashboard/ChatWidget';
-import { apiClient, type Project } from '@/lib/api';
-import { supabase } from '@/lib/supabase';
 
 export default function DashboardPage() {
-    const router = useRouter();
-    const [projects, setProjects] = useState<Project[]>([]);
+    const [project, setProject] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const [userEmail, setUserEmail] = useState<string>('');
+    const [uploading, setUploading] = useState(false);
+    const router = useRouter();
 
     useEffect(() => {
-        async function loadData() {
-            try {
-                const { data: { user } } = await supabase.auth.getUser();
-                if (!user) {
-                    router.push('/login');
-                    return;
-                }
+        fetchProject();
+    }, []);
 
-                setUserEmail(user.email || '');
-                const data = await apiClient.getProjects(user.id);
-                setProjects(data);
-            } catch (err) {
-                console.error('Failed to load projects:', err);
-            } finally {
-                setLoading(false);
+    const fetchProject = async () => {
+        try {
+            const supabase = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+            );
+            const { data: { session } } = await supabase.auth.getSession();
+
+            if (!session) {
+                router.push('/login');
+                return;
             }
+
+            const res = await fetch('http://localhost:8000/api/projects', {
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`
+                }
+            });
+
+            if (res.ok) {
+                const projects = await res.json();
+                if (projects.length > 0) {
+                    setProject(projects[0]); // Show latest project
+                } else {
+                    // No project found, redirect to wizard handled by middleware mostly, but good to handle here too
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching project:', error);
+        } finally {
+            setLoading(false);
         }
-        loadData();
-    }, [router]);
+    };
 
-    const activeProject = projects[0];
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        try {
+            if (!event.target.files || event.target.files.length === 0) return;
 
-    const projectData = activeProject ? {
-        name: activeProject.business_name,
-        domain: activeProject.domain_choice,
-        vibe: activeProject.vibe_style,
-        status: activeProject.status,
-        progress: 45, // Mock progress for now
-        startDate: new Date(activeProject.created_at).toLocaleDateString(),
-        estimatedLaunch: 'Feb 5, 2024',
-        teamLead: 'Alex Chen',
-    } : null;
+            setUploading(true);
+            const file = event.target.files[0];
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Math.random()}.${fileExt}`;
+            const filePath = `${project.id}/${fileName}`;
 
-    const recentActivity = [
-        { id: 1, action: 'Design mockups approved', time: '2 hours ago', type: 'success' },
-        { id: 2, action: 'Homepage development started', time: '5 hours ago', type: 'info' },
-        { id: 3, action: 'Color palette finalized', time: '1 day ago', type: 'success' },
-        { id: 4, action: 'Domain DNS configured', time: '2 days ago', type: 'success' },
+            const supabase = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+            );
+
+            const { error } = await supabase.storage
+                .from('project-assets')
+                .upload(filePath, file);
+
+            if (error) throw error;
+            alert('Upload successful!');
+
+        } catch (error) {
+            console.error('Error uploading:', error);
+            alert('Error uploading asset');
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    if (loading) return <div className="min-h-screen pt-24 px-4 text-center">Loading...</div>;
+
+    if (!project) return (
+        <div className="min-h-screen pt-24 px-4 flex flex-col items-center">
+            <h1 className="text-2xl font-bold mb-4">No Active Projects</h1>
+            <button
+                onClick={() => router.push('/wizard')}
+                className="px-6 py-3 bg-blue-600 rounded-lg hover:bg-blue-700 transition"
+            >
+                Start a New Project
+            </button>
+        </div>
+    );
+
+    const isActive = project.status === 'active' || project.status === 'building';
+
+    // Timeline steps
+    const steps = [
+        { id: 'draft', label: 'Design' },
+        { id: 'building', label: 'Dev' },
+        { id: 'qa', label: 'QA' },
+        { id: 'launched', label: 'Launch' }
     ];
 
-    if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-void">
-                <Loader2 className="animate-spin text-cobalt" size={32} />
-            </div>
-        );
-    }
+    // Simple mapping for progress; customize as needed based on your status values
+    const getStepStatus = (stepId: string) => {
+        if (project.status === stepId) return 'current';
+        // Simplistic logic: assume order. 
+        const statusOrder = ['draft', 'building', 'qa', 'launched'];
+        const currentIndex = statusOrder.indexOf(project.status) !== -1 ? statusOrder.indexOf(project.status) : 0;
+        const stepIndex = statusOrder.indexOf(stepId);
+
+        if (stepIndex < currentIndex) return 'completed';
+        if (stepIndex === currentIndex) return 'current';
+        return 'upcoming';
+    };
 
     return (
-        <div className="min-h-screen flex">
-            {/* Sidebar */}
-            <motion.aside
-                initial={{ x: -100, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                className="w-64 bg-carbon border-r border-steel flex flex-col"
-            >
-                {/* Logo */}
-                <div className="p-6 border-b border-steel">
-                    <Link href="/" className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-cobalt rounded flex items-center justify-center">
-                            <span className="font-display font-bold text-white text-sm">V</span>
-                        </div>
-                        <span className="font-display font-bold text-bone tracking-tight">VECTORWEB</span>
-                    </Link>
+        <div className="min-h-screen pt-24 px-4 max-w-6xl mx-auto">
+            {/* Header */}
+            <div className="flex justify-between items-center mb-12 p-6 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-xl">
+                <div>
+                    <h1 className="text-3xl font-bold text-white mb-2">{project.business_name}</h1>
+                    <p className="text-gray-400">Project ID: {project.id}</p>
                 </div>
 
-                {/* Navigation */}
-                <nav className="flex-1 p-4">
-                    <ul className="space-y-2">
-                        {[
-                            { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard', active: true },
-                            { icon: FileText, label: 'Documents', href: '#' },
-                            { icon: Settings, label: 'Settings', href: '#' },
-                        ].map((item) => (
-                            <li key={item.label}>
-                                <Link
-                                    href={item.href}
-                                    className={`
-                    flex items-center gap-3 px-4 py-3 rounded
-                    font-mono text-sm transition-colors
-                    ${item.active
-                                            ? 'bg-cobalt/10 text-cobalt border border-cobalt/30'
-                                            : 'text-ash hover:text-bone hover:bg-steel/30'}
-                  `}
-                                >
-                                    <item.icon size={18} />
-                                    {item.label}
-                                </Link>
-                            </li>
-                        ))}
-                    </ul>
-                </nav>
+                <div className={`px-4 py-2 rounded-full border ${isActive
+                        ? 'bg-green-500/20 border-green-500/50 text-green-400'
+                        : 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400'
+                    }`}>
+                    <span className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-green-500' : 'bg-yellow-500'}`}></span>
+                        {project.status.toUpperCase()}
+                    </span>
+                </div>
+            </div>
 
-                {/* User Section */}
-                <div className="p-4 border-t border-steel">
-                    <div className="flex items-center gap-3 px-4 py-3">
-                        <div className="w-8 h-8 rounded-full bg-steel flex items-center justify-center">
-                            <User size={16} className="text-ash" />
-                        </div>
-                        <div className="flex-1">
-                            <p className="font-mono text-sm text-bone">Demo User</p>
-                            <p className="font-mono text-[10px] text-ash">demo@vectorweb.io</p>
-                        </div>
+            {/* Timeline */}
+            <div className="mb-12">
+                <h2 className="text-xl font-semibold mb-6">Project Progress</h2>
+                <div className="relative flex justify-between">
+                    {/* Connecting Line */}
+                    <div className="absolute top-1/2 left-0 w-full h-1 bg-gray-700 -z-10 transform -translate-y-1/2"></div>
+
+                    {steps.map((step) => {
+                        const status = getStepStatus(step.id);
+                        return (
+                            <div key={step.id} className="flex flex-col items-center bg-zinc-900 px-4 z-10">
+                                <div className={`
+                            w-10 h-10 rounded-full flex items-center justify-center border-2 mb-2 transition-all duration-300
+                            ${status === 'completed' ? 'bg-green-500 border-green-500 text-black' : ''}
+                            ${status === 'current' ? 'bg-blue-600 border-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.5)]' : ''}
+                            ${status === 'upcoming' ? 'bg-gray-800 border-gray-600 text-gray-500' : ''}
+                        `}>
+                                    {status === 'completed' && '✓'}
+                                    {status === 'current' && <div className="w-3 h-3 bg-white rounded-full animate-pulse" />}
+                                </div>
+                                <span className={`text-sm font-medium ${status === 'upcoming' ? 'text-gray-500' : 'text-white'}`}>
+                                    {step.label}
+                                </span>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* Grid Layout for Assets & Details */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+                {/* Asset Uploader */}
+                <div className="p-6 bg-white/5 border border-white/10 rounded-2xl">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        Asset Manager
+                    </h3>
+                    <p className="text-sm text-gray-400 mb-6">Upload your logo, brand guide, or specific images.</p>
+
+                    <div className="border-2 border-dashed border-gray-700 hover:border-blue-500 rounded-xl p-8 transition-colors text-center cursor-pointer relative group">
+                        <input
+                            type="file"
+                            onChange={handleFileUpload}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            disabled={uploading}
+                        />
+
+                        {uploading ? (
+                            <div className="flex flex-col items-center">
+                                <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-2"></div>
+                                <span className="text-blue-400">Uploading...</span>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="mx-auto w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-500/20 transition-colors">
+                                    <svg className="w-6 h-6 text-gray-400 group-hover:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                                </div>
+                                <p className="text-gray-300 font-medium">Click or Drag to Upload</p>
+                                <p className="text-xs text-gray-500 mt-1">PNG, JPG up to 10MB</p>
+                            </>
+                        )}
                     </div>
-
-                    <button className="flex items-center gap-2 px-4 py-2 text-ash hover:text-red-400 transition-colors font-mono text-xs w-full">
-                        <LogOut size={14} />
-                        Logout
-                    </button>
                 </div>
-            </motion.aside>
 
-            {/* Main Content */}
-            <main className="flex-1 relative overflow-y-auto">
-                <GridBackground className="opacity-20" />
-
-                <div className="relative z-10 p-8">
-                    {/* Header */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex items-start justify-between mb-12"
-                    >
-                        <div>
-                            <h1 className="headline-md mb-2">WELCOME BACK</h1>
-                            <p className="text-technical text-ash">
-                                Your project is in progress. Track status and communicate with your team.
+                {/* Project Details */}
+                <div className="p-6 bg-white/5 border border-white/10 rounded-2xl">
+                    <h3 className="text-lg font-semibold mb-4">Project Details</h3>
+                    <div className="space-y-4">
+                        <div className="flex justify-between border-b border-gray-800 pb-2">
+                            <span className="text-gray-400">Website Type</span>
+                            <span>{project.website_type || 'N/A'}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-gray-800 pb-2">
+                            <span className="text-gray-400">Vibe</span>
+                            <span className="capitalize">{project.vibe_style}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-gray-800 pb-2">
+                            <span className="text-gray-400">Domain</span>
+                            <span>{project.domain_choice}</span>
+                        </div>
+                        <div className="mt-6 pt-4">
+                            <h4 className="text-sm font-semibold text-gray-400 mb-2">AI Reasoning</h4>
+                            <p className="text-sm text-gray-300 bg-black/30 p-3 rounded-lg border border-white/5">
+                                {project.ai_reasoning || 'No analysis available.'}
                             </p>
                         </div>
-
-                        <div className="flex items-center gap-4">
-                            <button className="relative p-2 text-ash hover:text-bone transition-colors">
-                                <Bell size={20} />
-                                <span className="absolute top-1 right-1 w-2 h-2 bg-cobalt rounded-full" />
-                            </button>
-                        </div>
-                    </motion.div>
-
-                    {/* Project Card */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 30 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 }}
-                        className="mb-12"
-                    >
-                        {projectData ? (
-                            <Card className="bg-carbon border-cobalt/30">
-                                <div className="flex items-start justify-between mb-6">
-                                    <div>
-                                        <span className="text-label text-cobalt block mb-2">ACTIVE PROJECT</span>
-                                        <h2 className="font-display font-bold text-3xl text-bone mb-1">
-                                            {projectData.name}
-                                        </h2>
-                                        <p className="font-mono text-sm text-ash flex items-center gap-2">
-                                            {projectData.domain}.com
-                                            <ExternalLink size={12} className="text-cobalt" />
-                                        </p>
-                                    </div>
-
-                                    <div className="text-right">
-                                        <span className={`
-                        inline-flex items-center gap-2 px-3 py-1
-                        font-mono text-xs border
-                        ${projectData.status === 'In Development'
-                                                ? 'text-yellow-400 border-yellow-400/30 bg-yellow-400/10'
-                                                : 'text-green-400 border-green-400/30 bg-green-400/10'}
-                      `}>
-                                            <Clock size={12} />
-                                            {projectData.status.toUpperCase()}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                {/* Progress Bar */}
-                                <div className="mb-6">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span className="font-mono text-xs text-ash">OVERALL PROGRESS</span>
-                                        <span className="font-mono text-xs text-cobalt">{projectData.progress}%</span>
-                                    </div>
-                                    <div className="h-2 bg-steel rounded-full overflow-hidden">
-                                        <motion.div
-                                            initial={{ width: 0 }}
-                                            animate={{ width: `${projectData.progress}%` }}
-                                            transition={{ duration: 1, delay: 0.5 }}
-                                            className="h-full bg-cobalt"
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Project Details */}
-                                <div className="grid grid-cols-4 gap-6 pt-6 border-t border-steel">
-                                    <div>
-                                        <span className="text-label block mb-1">STYLE</span>
-                                        <p className="font-mono text-sm text-bone uppercase">{projectData.vibe}</p>
-                                    </div>
-                                    <div>
-                                        <span className="text-label block mb-1">STARTED</span>
-                                        <p className="font-mono text-sm text-bone">{projectData.startDate}</p>
-                                    </div>
-                                    <div>
-                                        <span className="text-label block mb-1">LAUNCH ETA</span>
-                                        <p className="font-mono text-sm text-cobalt">{projectData.estimatedLaunch}</p>
-                                    </div>
-                                    <div>
-                                        <span className="text-label block mb-1">TEAM LEAD</span>
-                                        <p className="font-mono text-sm text-bone">{projectData.teamLead}</p>
-                                    </div>
-                                </div>
-                            </Card>
-                        ) : (
-                            <Card className="bg-carbon border-dashed border-steel text-center py-12">
-                                <h2 className="headline-md text-bone mb-4">NO ACTIVE PROJECT</h2>
-                                <p className="text-technical text-ash mb-8 max-w-md mx-auto">
-                                    You haven't started a project yet. Launch the wizard to create your digital presence.
-                                </p>
-                                <Button
-                                    variant="primary"
-                                    onClick={() => router.push('/wizard')}
-                                >
-                                    START NEW PROJECT
-                                    <ExternalLink size={16} />
-                                </Button>
-                            </Card>
-                        )}
-                    </motion.div>
-
-                    {/* Status Timeline */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 30 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                        className="mb-12"
-                    >
-                        <span className="text-label text-ash block mb-6">PROJECT TIMELINE</span>
-                        <Card className="bg-carbon">
-                            <StatusTimeline />
-                        </Card>
-                    </motion.div>
-
-                    {/* Recent Activity & Quick Actions */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Recent Activity */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 30 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.3 }}
-                        >
-                            <span className="text-label text-ash block mb-6">RECENT ACTIVITY</span>
-                            <Card className="bg-carbon">
-                                <div className="space-y-4">
-                                    {recentActivity.map((activity, i) => (
-                                        <motion.div
-                                            key={activity.id}
-                                            initial={{ opacity: 0, x: -20 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: 0.4 + i * 0.1 }}
-                                            className="flex items-start gap-3 pb-4 border-b border-steel last:border-0 last:pb-0"
-                                        >
-                                            <CheckCircle2
-                                                size={16}
-                                                className={activity.type === 'success' ? 'text-green-400' : 'text-cobalt'}
-                                            />
-                                            <div className="flex-1">
-                                                <p className="font-mono text-sm text-bone">{activity.action}</p>
-                                                <p className="font-mono text-[10px] text-ash">{activity.time}</p>
-                                            </div>
-                                        </motion.div>
-                                    ))}
-                                </div>
-                            </Card>
-                        </motion.div>
-
-                        {/* Quick Actions */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 30 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.4 }}
-                        >
-                            <span className="text-label text-ash block mb-6">QUICK ACTIONS</span>
-                            <Card className="bg-carbon">
-                                <div className="space-y-4">
-                                    <Button variant="outline" className="w-full justify-start">
-                                        <FileText size={16} />
-                                        View Contract
-                                    </Button>
-                                    <Button variant="outline" className="w-full justify-start">
-                                        <ExternalLink size={16} />
-                                        Preview Staging Site
-                                    </Button>
-                                    <Button variant="outline" className="w-full justify-start">
-                                        <Settings size={16} />
-                                        Project Settings
-                                    </Button>
-                                </div>
-                            </Card>
-                        </motion.div>
                     </div>
                 </div>
-            </main>
 
-            {/* AI Chat Widget */}
-            <ChatWidget projectId={activeProject?.id || null} />
+            </div>
         </div>
     );
 }

@@ -60,6 +60,11 @@ interface WizardState {
     completeDiscovery: () => void;
     toggleSelection: (option: string) => void;
     prevDiscoveryStep: () => void;
+
+    // Server-First Actions
+    init: (projectId: string) => Promise<void>;
+    saveStep: () => Promise<void>;
+    generateQuote: () => Promise<void>;
 }
 
 const initialState = {
@@ -323,6 +328,68 @@ export const useWizardStore = create<WizardState>((set, get) => ({
     },
 
     completeDiscovery: () => set({ isDiscoveryComplete: true }),
+
+    // Server-First Implementation
+    init: async (projectId: string) => {
+        set({ projectId, saveStatus: 'saving' });
+        try {
+            const project = await apiClient.getProject(projectId);
+
+            // Hydrate Store
+            set({
+                currentStep: project.wizard_step || 1,
+                businessName: project.business_name,
+                selectedVibe: (project.vibe_style as VibeType) || null,
+                domain: project.domain_choice,
+                saveStatus: 'success',
+
+                // Hydrate Discovery History if exists
+                discoveryHistory: (project.wizard_data as any)?.discoveryHistory || [],
+                currentDiscoveryStep: (project.wizard_data as any)?.currentDiscoveryStep || 0,
+                // If discovery is done based on history length or explicit flag (not stored yet, maybe check history length)
+                isDiscoveryComplete: ((project.wizard_data as any)?.discoveryHistory?.length || 0) >= 10
+            });
+        } catch (error) {
+            console.error('Failed to init project:', error);
+            set({ saveStatus: 'error', saveError: 'Failed to load project' });
+        }
+    },
+
+    saveStep: async () => {
+        const { projectId, businessName, selectedVibe, domain, currentStep, discoveryHistory, currentDiscoveryStep } = get();
+        if (!projectId) return;
+
+        set({ saveStatus: 'saving' });
+        try {
+            await apiClient.updateProject(projectId, {
+                business_name: businessName,
+                vibe_style: selectedVibe || undefined,
+                domain_choice: domain,
+                wizard_step: currentStep,
+                wizard_data: {
+                    discoveryHistory,
+                    currentDiscoveryStep
+                }
+            });
+            set({ saveStatus: 'success' });
+        } catch (error) {
+            console.error('Failed to save step:', error);
+            set({ saveStatus: 'error', saveError: 'Failed to save progress' });
+        }
+    },
+
+    generateQuote: async () => {
+        const { projectId } = get();
+        if (!projectId) return;
+        set({ saveStatus: 'saving' });
+        try {
+            await apiClient.generateProjectQuote(projectId);
+            set({ saveStatus: 'success' });
+        } catch (error) {
+            console.error('Failed to generate quote:', error);
+            set({ saveStatus: 'error', saveError: 'Failed to generate quote' });
+        }
+    },
 }));
 
 // Pre-filled mock data for demo

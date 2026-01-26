@@ -9,12 +9,19 @@ from typing import Optional, Any
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-
 # Import services
 import db
 import ai
 import domains
+import payments
+from dependencies import get_current_user
+
+# Rate Limiting
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from fastapi import Request, Depends
+from pydantic import BaseModel, Field
 
 # Load environment variables
 load_dotenv()
@@ -25,6 +32,14 @@ app = FastAPI(
     description="Python backend for VectorWeb Labs",
     version="1.0.0"
 )
+
+# Initialize Limiter
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Include Routers
+app.include_router(payments.router)
 
 # Configure CORS
 app.add_middleware(
@@ -42,7 +57,7 @@ app.add_middleware(
 
 class ProjectCreate(BaseModel):
     """Input model for creating a new project."""
-    business_name: str
+    business_name: str = Field(..., min_length=1, max_length=100)
     vibe_style: str  # 'modern', 'classic', or 'bold'
     user_id: str
     domain_choice: str
@@ -74,6 +89,8 @@ class Project(BaseModel):
     deposit_paid: Optional[bool] = False
     project_scope: Optional[dict] = None
     ai_price_quote: Optional[dict] = None
+    wizard_step: Optional[int] = 1
+    wizard_data: Optional[dict] = {}
 
     class Config:
         extra = "ignore"
@@ -102,6 +119,16 @@ class DomainCheckResponse(BaseModel):
     suggestions: list[str] = []
 
 
+class ProjectUpdate(BaseModel):
+    """Model for incremental updates to project state."""
+    business_name: Optional[str] = None
+    vibe_style: Optional[str] = None
+    domain_choice: Optional[str] = None
+    wizard_step: Optional[int] = None
+    wizard_data: Optional[dict] = None  # JSONB
+    project_scope: Optional[dict] = None
+
+
 class DiscoveryRequestNext(BaseModel):
     """Input model for the adaptive discovery engine."""
     business_name: str
@@ -120,12 +147,18 @@ class DiscoveryResponseNext(BaseModel):
 
 
 @app.post("/api/projects", response_model=ProjectResponseFull)
-async def create_project(project: ProjectCreate):
+@limiter.limit("5/hour")
+async def create_project(project: ProjectCreate, request: Request, user: dict = Depends(get_current_user)):
     """
     Create a new project, generate AI quote, and save to DB.
     """
     # 1. Save initial draft
-    project_id = db.create_project(project.dict())
+    # 1. Save initial draft
+    try:
+        project_id = db.create_project(project.dict())
+    except Exception as e:
+        print(f"Error creating project draft: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
     # 2. AI Estimation (Immediate)
     quote_data = ai.generate_quote(project.dict())
@@ -144,6 +177,140 @@ async def create_project(project: ProjectCreate):
     updated_project = db.update_project(project_id, db_update_payload)
 
     return updated_project
+
+
+@app.post("/api/projects/draft")
+async def create_project_draft(user: Any = Depends(get_current_user)):
+    """
+    Create a new empty draft project for the wizard.
+    """
+    try:
+        # Create minimal draft
+        draft_data = {
+            "business_name": "Untitled Project",
+            "vibe_style": "modern", # default
+            "domain_choice": "",
+            "user_id": user.id,
+            "status": "draft",
+            "wizard_step": 1,
+            "wizard_data": {}
+        }
+        project_id = db.create_project(draft_data)
+        return {"project_id": project_id}
+    except Exception as e:
+        print(f"Error creating draft: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/projects/{project_id}", response_model=Project)
+async def get_project(project_id: str, user: Any = Depends(get_current_user)):
+    """
+    Fetch a single project by ID.
+    """
+    try:
+        project = db.get_project(project_id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        # Access Check
+        if project.get("user_id") != user.id:
+             raise HTTPException(status_code=403, detail="Unauthorized")
+             
+        return project
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error fetching project {project_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.patch("/api/projects/{project_id}")
+async def update_project(project_id: str, update: ProjectUpdate, user: Any = Depends(get_current_user)):
+    """
+    Update a project incrementally.
+    """
+    try:
+        project = db.get_project(project_id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+            
+        if project.get("user_id") != user.id:
+             raise HTTPException(status_code=403, detail="Unauthorized")
+        
+        # Filter out None values
+        update_data = {k: v for k, v in update.dict().items() if v is not None}
+        
+        if not update_data:
+            return project # No changes
+            
+        updated = db.update_project(project_id, update_data)
+        return updated
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error updating project {project_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/projects/{project_id}/quote")
+async def generate_project_quote(project_id: str, user: Any = Depends(get_current_user)):
+    """
+    Generate an AI quote for an existing project.
+    """
+    try:
+        project = db.get_project(project_id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        if project.get("user_id") != user.id:
+             raise HTTPException(status_code=403, detail="Unauthorized")
+
+        # Generate Quote
+        quote_data = ai.generate_quote(project)
+        
+        # Update DB
+        db_update_payload = {
+            "ai_price_quote": quote_data.get("price", 0),
+            "ai_features": quote_data.get("features", []),
+            "ai_reasoning": quote_data.get("reasoning", ""),
+            "ai_suggested_stack": quote_data.get("suggested_stack", ""),
+            "ai_risks": quote_data.get("risks", []),
+            "status": "quoted" # Update status to quoted
+        }
+        updated = db.update_project(project_id, db_update_payload)
+        return updated
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error generating quote for {project_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/projects", response_model=list[Project])
+async def list_projects(user: Any = Depends(get_current_user)):
+    """
+    Fetch all projects for the authenticated user.
+    """
+    try:
+        return db.get_projects_by_user(user.id)
+    except Exception as e:
+        print(f"Error fetching projects: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/check-domain", response_model=DomainCheckResponse)
+@limiter.limit("10/minute")
+async def check_domain(request: Request, body: DomainCheckRequest):
+    """
+    Check availability of a domain.
+    """
+    try:
+        result = domains.check_availability(body.domain, body.vibe)
+        return result
+    except Exception as e:
+        print(f"Error checking domain {body.domain}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 

@@ -5,3 +5,5 @@ python-dotenv
 pydantic
 openai
 python-whois
+slowapi
+stripe

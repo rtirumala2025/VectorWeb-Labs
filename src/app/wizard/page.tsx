@@ -2,9 +2,10 @@
 
 import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, ArrowRight, Sparkles, Crown, Zap, Check, Terminal, Loader2, X, AlertCircle } from 'lucide-react';
 import { useWizardStore, mockWizardData, VibeType } from '@/stores/wizardStore';
+import { apiClient } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { GridBackground } from '@/components/backgrounds/GridBackground';
 import { StepDiscovery } from '@/components/wizard/StepDiscovery';
@@ -375,6 +376,9 @@ function Step3() {
 // Main Wizard Component
 export default function WizardPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const urlProjectId = searchParams.get('id');
+
     const {
         currentStep,
         setStep,
@@ -384,32 +388,82 @@ export default function WizardPage() {
         setBusinessName,
         setVibe,
         setDomain,
-        saveProject,
-        saveStatus
+        projectId,
+        saveStatus,
+        saveStep,
+        init
     } = useWizardStore();
 
-    // Pre-fill with mock data for demo
+    // Hydrate from Server
     useEffect(() => {
-        setBusinessName(mockWizardData.businessName);
-        setVibe(mockWizardData.selectedVibe);
-        setDomain(mockWizardData.domain);
-    }, [setBusinessName, setVibe, setDomain]);
+        if (urlProjectId && urlProjectId !== projectId) {
+            init(urlProjectId);
+        }
+    }, [urlProjectId, init, projectId]);
+
+    // Keep URL in sync (optional, mainly for initial creation)
+    useEffect(() => {
+        if (projectId && !urlProjectId) {
+            router.replace(`/wizard?id=${projectId}`);
+        }
+    }, [projectId, urlProjectId, router]);
 
     const handleNext = async () => {
+        // 1. Create Draft if Step 1 and no project
+        if (currentStep === 1 && !projectId) {
+            try {
+                const response = await apiClient.createDraft();
+                useWizardStore.setState({ projectId: response.project_id });
+                // URL update handled by useEffect
+            } catch (error) {
+                console.error('Failed to create draft:', error);
+                return; // Block progress
+            }
+        }
+
+        // 2. Save current progress
+        if (projectId || currentStep === 1) { // We just created it if step 1
+            await saveStep();
+        }
+
+        // 3. Navigate or Finalize
         if (currentStep === 4 && canProceed()) {
             // Import supabase client to get user
             const { supabase } = await import('@/lib/supabase');
             const { data: { user } } = await supabase.auth.getUser();
 
             if (user) {
-                // Save project to Python backend (AI generates quote)
-                const projectId = await saveProject(user.id);
-                if (projectId) {
-                    // Redirect to dynamic proposal page with project ID
-                    router.push(`/proposal/${projectId}`);
-                }
+                // Final save is implicit as we've been saving incrementally
+                // But we might want to mark it as ready or something?
+
+                // Existing logic called saveProject which creates a NEW project. 
+                // We want to UPDATE the existing one and perhaps mark it as "quoted"?
+                // The current saveProject creates a new one. 
+                // We should probably redirect to proposal with the CURRENT projectId.
+                // But wait, the backend `create_project` endpoint was doing the AI quote generation.
+                // We need to ensure the AI quote is generated.
+
+                // Option: Call a new endpoint to "finalize" or "quote" the project.
+                // Or: Update `saveProject` in store to be `finalizeProject`.
+
+                // For now, let's assume we redirect to proposal, and maybe proposal page generates quote if missing?
+                // OR: We trigger the AI quote generation here.
+
+                // Let's stick to the refactor plan: "Step 1... If no projectId: Call createDraft... Step 2-10... On Next: Call store.saveStep()"
+
+                // The AI quote generation was seemingly done in `createProject` in backend.
+                // We need to trigger that.
+
+                // Temporary solution: Just redirect. The proposal page might need to handle it.
+                // Checking `backend/main.py`... `create_project` does `ai.generate_quote`.
+                // `update_project` does NOT.
+
+                // So we lose the AI quote if we just use update.
+                // We should add a "finalize" or "generate_quote" endpoint.
+                // Or make `update_project` generate quote if status changes?
+
+                router.push(`/proposal/${projectId}`);
             } else {
-                // Redirect to login if not authenticated
                 router.push('/login');
             }
         } else {

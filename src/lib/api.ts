@@ -33,6 +33,19 @@ export interface ProjectResponse {
     ai_quote?: AIQuote;
 }
 
+export interface CreateDraftResponse {
+    project_id: string;
+}
+
+export interface ProjectUpdateData {
+    business_name?: string;
+    vibe_style?: string;
+    domain_choice?: string;
+    wizard_step?: number;
+    wizard_data?: Record<string, unknown>;
+    project_scope?: Record<string, unknown>;
+}
+
 export interface Project {
     id: string;
     user_id?: string;
@@ -47,6 +60,8 @@ export interface Project {
     deposit_paid?: boolean;
     project_scope?: Record<string, unknown>;
     ai_price_quote?: AIQuote;
+    wizard_step?: number;
+    wizard_data?: Record<string, unknown>;
 }
 
 export interface DomainCheckResponse {
@@ -156,6 +171,19 @@ class ApiClient {
         });
     }
 
+    async createDraft(): Promise<CreateDraftResponse> {
+        return this.request('/api/projects/draft', {
+            method: 'POST',
+        });
+    }
+
+    async updateProject(projectId: string, data: ProjectUpdateData): Promise<Project> {
+        return this.request(`/api/projects/${projectId}`, {
+            method: 'PATCH',
+            body: JSON.stringify(data),
+        });
+    }
+
     async getProject(projectId: string): Promise<Project> {
         return this.request(`/api/projects/${projectId}`);
     }
@@ -166,6 +194,12 @@ class ApiClient {
 
     async payProject(projectId: string): Promise<{ status: string }> {
         return this.request(`/api/projects/${projectId}/pay`, {
+            method: 'POST',
+        });
+    }
+
+    async generateProjectQuote(projectId: string): Promise<Project> {
+        return this.request(`/api/projects/${projectId}/quote`, {
             method: 'POST',
         });
     }
