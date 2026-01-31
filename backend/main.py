@@ -432,10 +432,17 @@ async def chat_with_ai(chat: ChatMessage):
 # VECTORBOT CHAT (Context-Aware AI Assistant)
 # ══════════════════════════════════════════════════════════════════════════════
 
+class ChatHistoryMessage(BaseModel):
+    """Single chat message for history."""
+    role: str  # 'user' or 'assistant'
+    content: str
+
+
 class VectorBotRequest(BaseModel):
     """Input model for VectorBot messages."""
     message: str
     context: Optional[str] = None  # Current page URL or wizard step
+    history: list[ChatHistoryMessage] = []  # Previous conversation messages
 
 
 class VectorBotResponse(BaseModel):
@@ -473,7 +480,8 @@ Rules:
 2. Be helpful and informative.
 3. If the user asks about exact pricing, tell them you need more project details first and guide them to complete the wizard.
 4. Never make up project details or statuses you don't know about.
-5. Use a slightly "techy" but approachable tone."""
+5. Use a slightly "techy" but approachable tone.
+6. STOP CONDITION: Review the chat history. If the user has already provided their Service, Target Audience, and Unique Value, STOP asking discovery questions and say "Great, I have everything I need!" Do not ask the same question twice."""
 
 
 @app.post("/api/vectorbot", response_model=VectorBotResponse)
@@ -498,16 +506,19 @@ async def vectorbot_chat(request: Request, body: VectorBotRequest):
         context_injection = _get_context_prompt(body.context)
         full_system_prompt = VECTORBOT_SYSTEM_PROMPT + context_injection
         
+        # Build messages array with history
+        messages_list = [{"role": "system", "content": full_system_prompt}]
+        for msg in body.history:
+            messages_list.append({"role": msg.role, "content": msg.content})
+        messages_list.append({"role": "user", "content": body.message})
+        
         completion = client.chat.completions.create(
             extra_headers={
                 "HTTP-Referer": "http://localhost:3000",
                 "X-Title": "VectorWeb Labs - VectorBot",
             },
             model="google/gemini-2.0-flash-001",
-            messages=[
-                {"role": "system", "content": full_system_prompt},
-                {"role": "user", "content": body.message}
-            ]
+            messages=messages_list
         )
         
         return {"reply": completion.choices[0].message.content}

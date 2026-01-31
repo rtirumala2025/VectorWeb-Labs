@@ -237,10 +237,14 @@ class ApiClient {
     // VectorBot (Context-Aware AI)
     // ────────────────────────────────────────────────────────────────────────────
 
-    async vectorBotChat(message: string, context?: string): Promise<{ reply: string }> {
+    async vectorBotChat(
+        message: string,
+        context?: string,
+        history?: Array<{ role: string; content: string }>
+    ): Promise<{ reply: string }> {
         return this.request('/api/vectorbot', {
             method: 'POST',
-            body: JSON.stringify({ message, context }),
+            body: JSON.stringify({ message, context, history: history || [] }),
         });
     }
 }

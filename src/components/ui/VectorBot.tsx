@@ -64,8 +64,11 @@ export function VectorBot() {
         setIsTyping(true);
 
         try {
-            // Call VectorBot API with context (current page URL)
-            const response = await apiClient.vectorBotChat(userMsg, pathname || undefined);
+            // Build history from existing messages (before adding new user message)
+            const history = messages.map(m => ({ role: m.role, content: m.content }));
+
+            // Call VectorBot API with context (current page URL) and history
+            const response = await apiClient.vectorBotChat(userMsg, pathname || undefined, history);
 
             // Add Assistant Message
             setMessages(prev => [...prev, { role: 'assistant', content: response.reply }]);

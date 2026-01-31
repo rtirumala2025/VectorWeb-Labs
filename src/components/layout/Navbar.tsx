@@ -5,18 +5,13 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Menu, X, LogOut, User } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabase } from '@/lib/supabase';
 
 export function Navbar() {
     const router = useRouter();
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [user, setUser] = useState<{ email?: string } | null>(null);
+    const [user, setUser] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -28,17 +23,22 @@ export function Navbar() {
     }, []);
 
     useEffect(() => {
-        // Check current session
+        console.log("🔵 Navbar: Mounting...");
+
+        // Check current user immediately (more reliable than getSession)
         const checkUser = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            setUser(session?.user ?? null);
+            const { data: { user } } = await supabase.auth.getUser();
+            console.log("🔵 Navbar: User found?", user?.email);
+            setUser(user);
             setIsLoading(false);
         };
         checkUser();
 
-        // Listen for auth state changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        // Listen for auth state changes (login/logout)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            console.log("🔵 Navbar: Auth Event:", event);
             setUser(session?.user ?? null);
+            setIsLoading(false);
         });
 
         return () => subscription.unsubscribe();
@@ -46,6 +46,7 @@ export function Navbar() {
 
     const handleSignOut = async () => {
         await supabase.auth.signOut();
+        setUser(null); // Force clear state immediately
         router.push('/');
     };
 
