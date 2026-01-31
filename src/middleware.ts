@@ -33,9 +33,15 @@ export async function middleware(request: NextRequest) {
     // 2. Refresh Session
     // This helps us update the cookie if it's expired or about to expire
     // IMPORTANT: Do NOT use existing user object from getSession(), call getUser() instead
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
+    let user = null
+    try {
+        const { data } = await supabase.auth.getUser()
+        user = data.user
+    } catch (error) {
+        console.error('Middleware getUser error:', error)
+        // If getUser fails, we don't want to redirect to login spuriously
+        // Let the request continue and let the page handle auth
+    }
 
 
     // 3. Intelligent Routing Logic
@@ -44,40 +50,48 @@ export async function middleware(request: NextRequest) {
     // Redirect Logic for Protected Routes
     if (path.startsWith('/wizard') || path.startsWith('/dashboard')) {
         if (!user) {
-            return NextResponse.redirect(new URL('/login', request.url))
+            // Only redirect to login if we're confident there's no session
+            // Check if there are auth cookies present as a fallback
+            const hasAuthCookie = request.cookies.getAll().some(c => c.name.includes('auth'))
+            if (!hasAuthCookie) {
+                return NextResponse.redirect(new URL('/login', request.url))
+            }
+            // If cookies exist but getUser failed, let the page handle it
         }
 
-        // Check User's Project Statuts
-        try {
-            const { data: projects } = await supabase
-                .from('projects')
-                .select('status, deposit_paid')
-                .eq('user_id', user.id)
-                .limit(1)
+        // Check User's Project Status (only if we have a valid user)
+        if (user) {
+            try {
+                const { data: projects } = await supabase
+                    .from('projects')
+                    .select('status, deposit_paid')
+                    .eq('user_id', user.id)
+                    .limit(1)
 
-            const hasProject = projects && projects.length > 0;
-            const project = hasProject ? projects[0] : null;
+                const hasProject = projects && projects.length > 0;
+                const project = hasProject ? projects[0] : null;
 
-            // If user is logged in + has signed contract (paid) -> Redirect /wizard to /dashboard
-            const isPaidOrBuilding = project && (project.deposit_paid === true || ['building', 'active', 'qa', 'launched'].includes(project.status));
+                // If user is logged in + has signed contract (paid) -> Redirect /wizard to /dashboard
+                const isPaidOrBuilding = project && (project.deposit_paid === true || ['building', 'active', 'qa', 'launched'].includes(project.status));
 
-            if (path.startsWith('/wizard') && isPaidOrBuilding) {
-                const redirectUrl = new URL('/dashboard', request.url)
-                return NextResponse.redirect(redirectUrl)
+                if (path.startsWith('/wizard') && isPaidOrBuilding) {
+                    const redirectUrl = new URL('/dashboard', request.url)
+                    return NextResponse.redirect(redirectUrl)
+                }
+
+                // If user is logged in + has NO project -> Redirect /dashboard to /wizard
+                if (path.startsWith('/dashboard') && !hasProject) {
+                    const redirectUrl = new URL('/wizard', request.url)
+                    return NextResponse.redirect(redirectUrl)
+                }
+
+            } catch (error) {
+                console.error("Middleware Project Check Error:", error);
             }
-
-            // If user is logged in + has NO project -> Redirect /dashboard to /wizard
-            if (path.startsWith('/dashboard') && !hasProject) {
-                const redirectUrl = new URL('/wizard', request.url)
-                return NextResponse.redirect(redirectUrl)
-            }
-
-        } catch (error) {
-            console.error("Middleware Project Check Error:", error);
         }
     }
 
-    // Specific Logic: If user is logged in and visits login page, redirect them appropiately
+    // Specific Logic: If user is logged in and visits login page, redirect them appropriately
     if (path === '/login' && user) {
         return NextResponse.redirect(new URL('/dashboard', request.url))
     }
