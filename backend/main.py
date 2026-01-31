@@ -429,6 +429,95 @@ async def chat_with_ai(chat: ChatMessage):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# VECTORBOT CHAT (Context-Aware AI Assistant)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class VectorBotRequest(BaseModel):
+    """Input model for VectorBot messages."""
+    message: str
+    context: Optional[str] = None  # Current page URL or wizard step
+
+
+class VectorBotResponse(BaseModel):
+    """Response model for VectorBot."""
+    reply: str
+
+
+def _get_context_prompt(context: Optional[str]) -> str:
+    """Generate context-aware system prompt injection based on current page."""
+    if not context:
+        return ""
+    
+    context_lower = context.lower()
+    
+    if '/wizard/domain' in context_lower:
+        return " The user is currently looking for a domain name. Help them brainstorm or explain domain considerations."
+    elif '/wizard/vibe' in context_lower:
+        return " The user is choosing a design style/vibe. Explain the differences between modern, classic, and bold aesthetics."
+    elif '/wizard/discovery' in context_lower:
+        return " The user is in the technical discovery phase. Help them think through their website requirements."
+    elif '/proposal' in context_lower:
+        return " The user is looking at their contract/proposal. Explain terms simply and reassure them about the process."
+    elif '/dashboard' in context_lower:
+        return " The user is on their dashboard viewing their project status. Help them understand timelines and next steps."
+    
+    return ""
+
+
+VECTORBOT_SYSTEM_PROMPT = """You are VectorBot, a helpful AI assistant for VectorWeb Labs, a student-run web development agency.
+
+Personality: Cyber-minimalist. Professional but friendly. Concise and direct.
+
+Rules:
+1. Keep answers SHORT - under 2 sentences maximum.
+2. Be helpful and informative.
+3. If the user asks about exact pricing, tell them you need more project details first and guide them to complete the wizard.
+4. Never make up project details or statuses you don't know about.
+5. Use a slightly "techy" but approachable tone."""
+
+
+@app.post("/api/vectorbot", response_model=VectorBotResponse)
+@limiter.limit("30/minute")
+async def vectorbot_chat(request: Request, body: VectorBotRequest):
+    """
+    VectorBot AI chat endpoint with context awareness.
+    """
+    from openai import OpenAI
+    
+    if not OPENROUTER_API_KEY:
+        # Fallback mock response
+        return {"reply": "System initializing. Try again in a moment."}
+    
+    try:
+        client = OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=OPENROUTER_API_KEY,
+        )
+        
+        # Build context-aware system prompt
+        context_injection = _get_context_prompt(body.context)
+        full_system_prompt = VECTORBOT_SYSTEM_PROMPT + context_injection
+        
+        completion = client.chat.completions.create(
+            extra_headers={
+                "HTTP-Referer": "http://localhost:3000",
+                "X-Title": "VectorWeb Labs - VectorBot",
+            },
+            model="google/gemini-2.0-flash-001",
+            messages=[
+                {"role": "system", "content": full_system_prompt},
+                {"role": "user", "content": body.message}
+            ]
+        )
+        
+        return {"reply": completion.choices[0].message.content}
+        
+    except Exception as e:
+        print(f"VectorBot Error: {e}")
+        return {"reply": "My neural link is currently unstable. Please try again."}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # MAIN ENTRY POINT
 # ══════════════════════════════════════════════════════════════════════════════
 

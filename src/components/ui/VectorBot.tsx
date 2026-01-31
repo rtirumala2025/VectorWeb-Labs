@@ -64,11 +64,11 @@ export function VectorBot() {
         setIsTyping(true);
 
         try {
-            // Call API
-            const response = await apiClient.chat(userMsg, projectId || 'guest');
+            // Call VectorBot API with context (current page URL)
+            const response = await apiClient.vectorBotChat(userMsg, pathname || undefined);
 
             // Add Assistant Message
-            setMessages(prev => [...prev, { role: 'assistant', content: response.response }]);
+            setMessages(prev => [...prev, { role: 'assistant', content: response.reply }]);
         } catch (error) {
             console.error(error);
             setMessages(prev => [...prev, { role: 'assistant', content: "Connection interrupted. My neural link is unstable right now." }]);
@@ -111,8 +111,8 @@ export function VectorBot() {
                                     className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                                 >
                                     <div className={`max-w-[85%] rounded-lg p-3 text-sm leading-relaxed ${msg.role === 'user'
-                                            ? 'bg-blue-600 text-white rounded-tr-none'
-                                            : 'bg-white/10 text-gray-200 rounded-tl-none border border-white/5'
+                                        ? 'bg-blue-600 text-white rounded-tr-none'
+                                        : 'bg-white/10 text-gray-200 rounded-tl-none border border-white/5'
                                         }`}>
                                         <div className="flex items-center gap-2 mb-1 opacity-50 text-[10px] font-mono uppercase tracking-wider">
                                             {msg.role === 'user' ? <User size={10} /> : <Bot size={10} />}

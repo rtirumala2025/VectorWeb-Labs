@@ -4,7 +4,7 @@
 
 import { supabase } from '@/lib/supabase';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 // ══════════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -230,6 +230,17 @@ class ApiClient {
         return this.request('/api/chat', {
             method: 'POST',
             body: JSON.stringify({ message, project_id: projectId }),
+        });
+    }
+
+    // ────────────────────────────────────────────────────────────────────────────
+    // VectorBot (Context-Aware AI)
+    // ────────────────────────────────────────────────────────────────────────────
+
+    async vectorBotChat(message: string, context?: string): Promise<{ reply: string }> {
+        return this.request('/api/vectorbot', {
+            method: 'POST',
+            body: JSON.stringify({ message, context }),
         });
     }
 }
