@@ -1,0 +1,89 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e4]:
+      - link "V VECTORWEB LABS" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e7]: V
+        - generic [ref=e8]: VECTORWEB LABS
+      - generic [ref=e9]:
+        - link "LOGIN" [ref=e10] [cursor=pointer]:
+          - /url: /login
+        - link "START PROJECT" [ref=e11] [cursor=pointer]:
+          - /url: /signup
+  - main [ref=e12]:
+    - generic [ref=e13]:
+      - generic [ref=e18]:
+        - generic [ref=e19]:
+          - link "BACK TO LAB" [ref=e20] [cursor=pointer]:
+            - /url: /
+            - img [ref=e21]
+            - generic [ref=e23]: BACK TO LAB
+          - heading "WELCOME BACK" [level=1] [ref=e24]:
+            - text: WELCOME
+            - text: BACK
+          - paragraph [ref=e25]: Enter your credentials to access your dashboard.
+        - button "CONTINUE WITH GOOGLE" [ref=e26]:
+          - img [ref=e27]
+          - generic [ref=e32]: CONTINUE WITH GOOGLE
+        - generic [ref=e39]: — OR —
+        - generic [ref=e41]:
+          - generic [ref=e42]:
+            - generic [ref=e43]: EMAIL
+            - generic [ref=e44]:
+              - img [ref=e46]
+              - textbox "operator@vectorweb.io" [ref=e49]
+          - generic [ref=e50]:
+            - generic [ref=e51]:
+              - generic [ref=e52]: PASSWORD
+              - generic [ref=e53]:
+                - img [ref=e55]
+                - textbox "••••••••••••" [ref=e58]
+            - button [ref=e59]:
+              - img [ref=e60]
+          - generic [ref=e63]:
+            - generic [ref=e64] [cursor=pointer]:
+              - checkbox "Remember me" [ref=e65]
+              - generic [ref=e66]: Remember me
+            - link "Forgot password?" [ref=e67] [cursor=pointer]:
+              - /url: "#"
+          - button "LOGIN" [ref=e68] [cursor=pointer]:
+            - generic [ref=e70]:
+              - text: LOGIN
+              - img [ref=e71]
+        - paragraph [ref=e73]:
+          - text: Don't have an account?
+          - link "Start a project" [ref=e74] [cursor=pointer]:
+            - /url: /signup
+      - generic [ref=e78]:
+        - generic [ref=e79]: SECURE CONNECTION
+        - generic [ref=e80]:
+          - paragraph [ref=e81]: "PROTOCOL: AES-256-GCM"
+          - paragraph [ref=e82]: "STATUS: ENCRYPTED"
+  - contentinfo [ref=e89]:
+    - generic [ref=e90]:
+      - generic [ref=e93]: VECTORWEB.LAB
+      - generic [ref=e94]:
+        - generic [ref=e95]:
+          - img [ref=e96]
+          - generic [ref=e98]: "SYSTEM:"
+          - generic [ref=e99]: ONLINE
+        - generic [ref=e100]:
+          - img [ref=e101]
+          - generic [ref=e105]: "LATENCY:"
+          - generic [ref=e106]: 13ms
+        - generic [ref=e107]:
+          - img [ref=e108]
+          - generic [ref=e111]: "LOCAL:"
+          - generic [ref=e112]: 14:54:02
+        - generic [ref=e113]:
+          - img [ref=e114]
+          - generic [ref=e116]: "STATUS:"
+          - generic [ref=e117]: OPERATIONAL
+      - generic [ref=e118]: v0.1.0-alpha
+  - button [ref=e120]:
+    - img [ref=e123]
+  - alert [ref=e125]
+```

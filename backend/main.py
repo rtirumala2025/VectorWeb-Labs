@@ -52,6 +52,37 @@ app.add_middleware(
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# HEALTH CHECK
+# ══════════════════════════════════════════════════════════════════════════════
+
+@app.get("/")
+async def health_check():
+    """
+    Root health check endpoint.
+    Returns server status and database connectivity.
+    """
+    db_status = "disconnected"
+    db_error = None
+    
+    try:
+        # Attempt a simple database query to verify connectivity
+        result = db.supabase.table("projects").select("id").limit(1).execute()
+        db_status = "connected"
+    except Exception as e:
+        db_error = str(e)
+    
+    return {
+        "status": "online",
+        "system": "VectorWeb Labs AI",
+        "version": "1.0.0",
+        "database": {
+            "status": db_status,
+            "error": db_error
+        }
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # PYDANTIC MODELS
 # ══════════════════════════════════════════════════════════════════════════════
 
