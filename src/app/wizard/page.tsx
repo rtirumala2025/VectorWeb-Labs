@@ -421,10 +421,10 @@ export default function WizardPage() {
                     const response = await apiClient.createDraft();
                     useWizardStore.setState({ projectId: response.project_id });
                 } catch (error) {
-                    console.error('Failed to create draft:', error);
+                    // Failed to create draft - continue silently
                 }
             } else {
-                console.log('Guest user: continuing without server draft');
+                // Guest user: continuing without server draft
             }
         }
 

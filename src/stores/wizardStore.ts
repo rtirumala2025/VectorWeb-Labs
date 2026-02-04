@@ -130,8 +130,8 @@ export const useWizardStore = create<WizardState>((set, get) => ({
                 set({ domainStatus: 'taken', domainSuggestions: result.suggestions || [] });
             }
         } catch (error) {
-            console.error('Domain check failed:', error);
-            set({ domainStatus: 'available' }); // Fallback
+            // Domain check failed - assume available as fallback
+            set({ domainStatus: 'available' });
         }
     },
 

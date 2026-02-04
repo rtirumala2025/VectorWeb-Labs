@@ -23,12 +23,10 @@ export function Navbar() {
     }, []);
 
     useEffect(() => {
-        console.log("🔵 Navbar: Mounting...");
 
         // Check current user immediately (more reliable than getSession)
         const checkUser = async () => {
             const { data: { user } } = await supabase.auth.getUser();
-            console.log("🔵 Navbar: User found?", user?.email);
             setUser(user);
             setIsLoading(false);
         };
@@ -36,7 +34,6 @@ export function Navbar() {
 
         // Listen for auth state changes (login/logout)
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            console.log("🔵 Navbar: Auth Event:", event);
             setUser(session?.user ?? null);
             setIsLoading(false);
         });
