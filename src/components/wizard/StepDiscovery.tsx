@@ -51,7 +51,7 @@ export function StepDiscovery() {
                 <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="w-full bg-carbon/60 border border-green-500/30 p-12 text-center rounded-lg relative overflow-hidden shadow-2xl backdrop-blur-sm"
+                    className="w-full bg-carbon/60 border border-green-500/30 p-12 text-center relative overflow-hidden shadow-2xl backdrop-blur-sm"
                 >
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-green-500 to-transparent opacity-50" />
 
@@ -67,7 +67,7 @@ export function StepDiscovery() {
 
                     <button
                         onClick={nextStep}
-                        className="w-full bg-green-600 hover:bg-green-500 text-black font-mono font-bold py-4 rounded transition-all flex items-center justify-center gap-2"
+                        className="w-full bg-green-600 hover:bg-green-500 text-black font-mono font-bold py-4 transition-all flex items-center justify-center gap-2"
                     >
                         <span>PROCEED_TO_AESTHETIC</span>
                         <ChevronRight size={18} />

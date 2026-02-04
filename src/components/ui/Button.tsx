@@ -61,7 +61,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           className="absolute inset-0 bg-white/5"
           initial={{ x: '-100%' }}
           whileHover={{ x: '100%' }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.25 }}
         />
         <span className="relative z-10 flex items-center gap-2">{children}</span>
       </motion.button>

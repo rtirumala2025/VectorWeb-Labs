@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, ArrowRight, Sparkles, Crown, Zap, Check, Terminal, Loader2, X, AlertCircle } from 'lucide-react';
@@ -171,7 +171,7 @@ function Step2() {
                             <motion.div
                                 animate={isSelected ? vibe.animation : undefined}
                                 className={`
-                  w-16 h-16 rounded-lg mx-auto mb-6
+                  w-16 h-16 mx-auto mb-6
                   bg-gradient-to-br ${vibe.gradient}
                   flex items-center justify-center
                 `}
@@ -373,8 +373,8 @@ function Step3() {
 }
 
 
-// Main Wizard Component
-export default function WizardPage() {
+// Main Wizard Component - Inner
+function WizardPageInner() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const urlProjectId = searchParams.get('id');
@@ -591,5 +591,21 @@ export default function WizardPage() {
                 )}
             </AnimatePresence>
         </div>
+    );
+}
+
+// Wrapper with Suspense for useSearchParams
+export default function WizardPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-void">
+                <div className="text-center">
+                    <div className="w-16 h-16 border border-cobalt/30 border-t-cobalt rounded-full animate-spin mx-auto mb-4" />
+                    <span className="text-ash font-mono text-sm">INITIALIZING WIZARD...</span>
+                </div>
+            </div>
+        }>
+            <WizardPageInner />
+        </Suspense>
     );
 }

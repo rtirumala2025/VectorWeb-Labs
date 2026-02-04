@@ -69,7 +69,7 @@ export default function DashboardPage() {
             </div>
 
             {projects.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 bg-white/5 border border-dashed border-steel rounded-2xl">
+                <div className="flex flex-col items-center justify-center py-20 bg-white/5 border border-dashed border-steel">
                     <div className="w-16 h-16 bg-carbon rounded-full flex items-center justify-center mb-6">
                         <FileText size={32} className="text-ash" />
                     </div>
@@ -87,12 +87,12 @@ export default function DashboardPage() {
                     {projects.map((project) => (
                         <div
                             key={project.id}
-                            className="group relative bg-carbon border border-steel hover:border-cobalt transition-all duration-300 rounded-lg overflow-hidden flex flex-col"
+                            className="group relative bg-carbon border border-steel hover:border-cobalt transition-all duration-300 overflow-hidden flex flex-col"
                         >
                             {/* Status Bar */}
                             <div className={`h-1 w-full ${project.status === 'draft' ? 'bg-ash' :
-                                    ['signed', 'building', 'active'].includes(project.status) ? 'bg-green-500' :
-                                        'bg-cobalt'
+                                ['signed', 'building', 'active'].includes(project.status) ? 'bg-green-500' :
+                                    'bg-cobalt'
                                 }`} />
 
                             <div className="p-6 flex-1 flex flex-col">

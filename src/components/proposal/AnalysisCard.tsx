@@ -15,7 +15,7 @@ export function AnalysisCard({ businessName, reasoning, risks = [] }: AnalysisCa
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-blue-900/10 border border-blue-500/30 p-6 mb-8 rounded-lg relative overflow-hidden"
+            className="bg-blue-900/10 border border-blue-500/30 p-6 mb-8 relative overflow-hidden"
         >
             {/* Background scanner line effect */}
             <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-blue-500/50 to-transparent animate-scan" />

@@ -35,7 +35,7 @@ export function StatusTimeline({ steps = defaultSteps }: StatusTimelineProps) {
                     animate={{
                         width: `${(steps.findIndex(s => s.status === 'current') + 0.5) * (100 / steps.length)}%`
                     }}
-                    transition={{ duration: 1, delay: 0.5, ease: 'easeOut' }}
+                    transition={{ duration: 0.5, delay: 0.3, ease: 'easeOut' }}
                 />
 
                 {/* Steps */}

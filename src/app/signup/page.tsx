@@ -144,7 +144,7 @@ export default function SignupPage() {
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-4 top-[38px] text-ash hover:text-bone transition-colors"
+                                className="absolute right-4 top-10 text-ash hover:text-bone transition-colors"
                             >
                                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                             </button>

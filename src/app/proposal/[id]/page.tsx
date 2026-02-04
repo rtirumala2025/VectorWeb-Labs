@@ -500,19 +500,6 @@ and initiates the design phase. Given current demand, estimated delivery is 10-1
                         </Card>
                     </motion.div>
                 )}
-
-                {/* Download Option */}
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.5 }}
-                    className="text-center"
-                >
-                    <button className="inline-flex items-center gap-2 text-ash hover:text-bone transition-colors font-mono text-sm">
-                        <Download size={14} />
-                        Download PDF
-                    </button>
-                </motion.div>
             </div>
         </div>
     );

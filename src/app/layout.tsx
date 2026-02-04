@@ -4,6 +4,7 @@ import "./globals.css";
 import { LabStatusFooter } from "@/components/layout/LabStatusFooter";
 import { Navbar } from "@/components/layout/Navbar";
 import { VectorBot } from "@/components/ui/VectorBot";
+import { Toaster } from "sonner";
 
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-mono",
@@ -51,6 +52,9 @@ export default function RootLayout({
 
         {/* Floating AI Assistant */}
         <VectorBot />
+
+        {/* Toast Notifications */}
+        <Toaster position="bottom-right" theme="dark" richColors />
       </body>
     </html>
   );

@@ -118,7 +118,7 @@ export function ChatWidget({ projectId }: ChatWidgetProps) {
                         exit={{ opacity: 0, y: 20, scale: 0.95 }}
                         transition={{ type: 'spring', damping: 25 }}
                         className="fixed bottom-20 right-6 z-50 w-96 h-[500px]
-              bg-carbon border border-steel rounded-lg
+              bg-carbon/90 backdrop-blur-xl border border-steel
               shadow-2xl shadow-black/50
               flex flex-col overflow-hidden"
                     >
@@ -161,7 +161,7 @@ export function ChatWidget({ projectId }: ChatWidgetProps) {
                                         )}
                                     </div>
                                     <div className={`
-                    max-w-[75%] p-3 rounded-lg
+                    max-w-[75%] p-3
                     ${msg.role === 'assistant'
                                             ? 'bg-graphite border border-steel text-bone'
                                             : 'bg-cobalt text-white'}
@@ -180,7 +180,7 @@ export function ChatWidget({ projectId }: ChatWidgetProps) {
                                     <div className="w-7 h-7 rounded-full bg-cobalt/20 flex items-center justify-center">
                                         <Bot size={14} className="text-cobalt" />
                                     </div>
-                                    <div className="bg-graphite border border-steel p-3 rounded-lg">
+                                    <div className="bg-graphite border border-steel p-3">
                                         <div className="flex gap-1">
                                             {[0, 1, 2].map((i) => (
                                                 <motion.span
@@ -188,7 +188,7 @@ export function ChatWidget({ projectId }: ChatWidgetProps) {
                                                     className="w-2 h-2 bg-cobalt rounded-full"
                                                     animate={{ opacity: [0.3, 1, 0.3] }}
                                                     transition={{
-                                                        duration: 1,
+                                                        duration: 0.5,
                                                         repeat: Infinity,
                                                         delay: i * 0.2
                                                     }}

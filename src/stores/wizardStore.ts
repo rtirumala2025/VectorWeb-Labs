@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { apiClient, AIQuote } from '@/lib/api';
+import { toast } from 'sonner';
 
 export type VibeType = 'modern' | 'classic' | 'bold' | null;
 
@@ -382,6 +383,7 @@ export const useWizardStore = create<WizardState>((set, get) => ({
                 }
             });
             set({ saveStatus: 'success' });
+            toast.success('Progress saved');
         } catch (error) {
             console.error('Failed to save step:', error);
             set({ saveStatus: 'error', saveError: 'Failed to save progress' });
